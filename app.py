@@ -798,8 +798,19 @@ def render_empty_state() -> None:
 
 
 def continuous_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    selected_columns = st.multiselect(
+        "Variables continuas a mostrar",
+        columns,
+        default=columns,
+        key="continuous_table_filter",
+    )
     panel_start("Variables continuas", "Conteo, perdidos, tendencia central, dispersion y percentiles.")
-    table = continuous_summary(df, columns)
+    if not selected_columns:
+        st.info("Selecciona al menos una variable continua para mostrar la tabla.")
+        panel_end()
+        return pd.DataFrame()
+
+    table = continuous_summary(df, selected_columns)
     st.dataframe(table, use_container_width=True, height=430)
     if not table.empty:
         col_csv, col_xlsx = st.columns(2)
@@ -824,9 +835,20 @@ def continuous_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
 
 
 def categorical_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    selected_columns = st.multiselect(
+        "Variables categoricas a mostrar",
+        columns,
+        default=columns,
+        key="categorical_table_filter",
+    )
     max_levels = st.slider("Maximo de categorias por variable", 5, 100, 30)
     panel_start("Variables categoricas", "Frecuencias absolutas, porcentajes y valores perdidos.")
-    table = categorical_summary(df, columns, max_levels=max_levels)
+    if not selected_columns:
+        st.info("Selecciona al menos una variable categorica para mostrar la tabla.")
+        panel_end()
+        return pd.DataFrame()
+
+    table = categorical_summary(df, selected_columns, max_levels=max_levels)
     st.dataframe(table, use_container_width=True, height=430)
     if not table.empty:
         col_csv, col_xlsx = st.columns(2)
