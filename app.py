@@ -706,6 +706,8 @@ def chart_style_controls() -> dict[str, object]:
     return {
         "palette": PALETTES[palette_name],
         "legend_title": "",
+        "show_title": True,
+        "title_alignment": "Centro",
         "paper_bg": paper_bg,
         "plot_bg": plot_bg,
         "text_color": text_color,
@@ -725,6 +727,14 @@ def style_figure(fig, style: dict[str, object]) -> None:
     font_family = str(style["font_family"])
     font_size = int(style["font_size"])
     legend_title = str(style.get("legend_title", "")).strip()
+    show_title = bool(style.get("show_title", True))
+    title_alignment = str(style.get("title_alignment", "Centro"))
+    title_x = {"Izquierda": 0.0, "Centro": 0.5, "Derecha": 1.0}.get(title_alignment, 0.5)
+    title_anchor = {"Izquierda": "left", "Centro": "center", "Derecha": "right"}.get(
+        title_alignment,
+        "center",
+    )
+    current_title = fig.layout.title.text if fig.layout.title and fig.layout.title.text else ""
     fig.update_layout(
         template="plotly_dark",
         width=900,
@@ -732,7 +742,12 @@ def style_figure(fig, style: dict[str, object]) -> None:
         paper_bgcolor=paper_bg,
         plot_bgcolor=plot_bg,
         font={"color": text_color, "family": font_family, "size": font_size},
-        title={"font": {"color": text_color, "family": font_family, "size": font_size + 4}},
+        title={
+            "text": current_title if show_title else "",
+            "x": title_x,
+            "xanchor": title_anchor,
+            "font": {"color": text_color, "family": font_family, "size": font_size + 4},
+        },
         legend={
             "bgcolor": paper_bg,
             "bordercolor": paper_bg,
@@ -761,6 +776,22 @@ def style_figure(fig, style: dict[str, object]) -> None:
         title_font={"color": text_color, "family": font_family, "size": font_size},
         zerolinecolor=grid_color,
     )
+
+
+def chart_title_controls(default_title: str, key_prefix: str) -> str:
+    title = st.text_input("Titulo", default_title, key=f"{key_prefix}_title")
+    show_title = st.toggle("Mostrar titulo", value=True, key=f"{key_prefix}_show_title")
+    title_alignment = st.segmented_control(
+        "Alineacion del titulo",
+        ["Izquierda", "Centro", "Derecha"],
+        default="Centro",
+        key=f"{key_prefix}_title_alignment",
+    )
+    st.session_state[f"{key_prefix}_title_options"] = {
+        "show_title": show_title,
+        "title_alignment": title_alignment,
+    }
+    return title
 
 
 def panel_start(title: str, subtitle: str = "") -> None:
@@ -943,7 +974,8 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             color = st.selectbox("Agrupacion/color", ["Ninguna"] + categorical_vars)
             bins = st.slider("Bins", 5, 100, 30)
             percent = st.toggle("Mostrar porcentajes", value=False)
-            title = st.text_input("Titulo", f"Histograma de {x}")
+            title = chart_title_controls(f"Histograma de {x}", "hist")
+            style_config.update(st.session_state["hist_title_options"])
             x_label = st.text_input("Eje X", x)
             y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia")
             legend_title = st.text_input(
@@ -1005,7 +1037,8 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 step=1,
             )
             orientation = st.segmented_control("Orientacion", ["Vertical", "Horizontal"], default="Vertical")
-            title = st.text_input("Titulo", f"Barras de {x}")
+            title = chart_title_controls(f"Barras de {x}", "bar")
+            style_config.update(st.session_state["bar_title_options"])
             x_label = st.text_input("Eje X", x)
             y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia")
             legend_title = st.text_input(
@@ -1039,7 +1072,8 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             x = st.selectbox("Variable X", continuous_vars)
             y = st.selectbox("Variable Y", [c for c in continuous_vars if c != x])
             color = st.selectbox("Color", ["Ninguna"] + categorical_vars)
-            title = st.text_input("Titulo", f"{y} vs {x}")
+            title = chart_title_controls(f"{y} vs {x}", "scatter")
+            style_config.update(st.session_state["scatter_title_options"])
             x_label = st.text_input("Eje X", x)
             y_label = st.text_input("Eje Y", y)
             legend_title = st.text_input(
