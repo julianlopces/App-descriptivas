@@ -962,6 +962,14 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 default="Apiladas",
             )
             percent = st.toggle("Mostrar porcentajes", value=False)
+            show_labels = st.toggle("Mostrar etiquetas en barras", value=True)
+            label_decimals = st.number_input(
+                "Decimales de etiquetas",
+                min_value=0,
+                max_value=6,
+                value=2,
+                step=1,
+            )
             orientation = st.segmented_control("Orientacion", ["Vertical", "Horizontal"], default="Vertical")
             title = st.text_input("Titulo", f"Barras de {x}")
             x_label = st.text_input("Eje X", x)
@@ -983,6 +991,8 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 percent=percent,
                 orientation="h" if orientation == "Horizontal" else "v",
                 barmode="stack" if barmode == "Apiladas" else "group",
+                show_labels=show_labels,
+                label_decimals=int(label_decimals),
                 width=900,
                 height=520,
             )

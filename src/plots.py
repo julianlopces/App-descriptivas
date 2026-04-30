@@ -77,6 +77,8 @@ def bar_chart(
     percent: bool,
     orientation: str,
     barmode: str,
+    show_labels: bool,
+    label_decimals: int,
     width: int,
     height: int,
 ) -> Figure:
@@ -87,6 +89,8 @@ def bar_chart(
     counts = plotted.groupby(group_columns, dropna=False).size().reset_index(name="frecuencia")
     counts["porcentaje"] = counts["frecuencia"] / counts["frecuencia"].sum() * 100
     value_col = "porcentaje" if percent else "frecuencia"
+    label_col = f"{value_col}_etiqueta"
+    counts[label_col] = counts[value_col].map(lambda value: f"{value:.{label_decimals}f}")
 
     if orientation == "h":
         fig = px.bar(
@@ -100,6 +104,7 @@ def bar_chart(
             width=width,
             height=height,
             barmode=barmode,
+            text=label_col if show_labels else None,
         )
         fig.update_layout(xaxis_title=y_label, yaxis_title=x_label)
     else:
@@ -113,8 +118,15 @@ def bar_chart(
             width=width,
             height=height,
             barmode=barmode,
+            text=label_col if show_labels else None,
         )
         fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
+    if show_labels:
+        fig.update_traces(
+            textposition="inside" if barmode == "stack" else "outside",
+            texttemplate="%{text}",
+            cliponaxis=False,
+        )
     fig.for_each_annotation(lambda annotation: annotation.update(text=annotation.text.replace(f"{facet}=", "")) if facet else None)
     return fig
 
