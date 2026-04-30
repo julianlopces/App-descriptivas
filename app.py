@@ -44,6 +44,11 @@ def inject_styles() -> None:
             color: var(--text);
         }
 
+        header[data-testid="stHeader"] {
+            background: #ffffff;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
         [data-testid="stSidebar"] {
             background: #252522;
             border-right: 1px solid var(--stroke);
@@ -244,7 +249,7 @@ def inject_styles() -> None:
         }
 
         .block-container {
-            padding-top: 1.35rem;
+            padding-top: 4.75rem;
             max-width: 1420px;
         }
 
