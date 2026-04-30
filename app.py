@@ -962,6 +962,18 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 default="Apiladas",
             )
             percent = st.toggle("Mostrar porcentajes", value=False)
+            percent_denominator = "total"
+            if percent:
+                denominator_options = {"Total general": "total", f"Total por {x}": "x"}
+                if color != "Ninguna":
+                    denominator_options[f"Total por {color}"] = "color"
+                if facet != "Ninguna":
+                    denominator_options[f"Total por {facet}"] = "facet"
+                denominator_label = st.selectbox(
+                    "Calcular porcentaje sobre",
+                    list(denominator_options.keys()),
+                )
+                percent_denominator = denominator_options[denominator_label]
             show_labels = st.toggle("Mostrar etiquetas en barras", value=True)
             label_decimals = st.number_input(
                 "Decimales de etiquetas",
@@ -989,6 +1001,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 x_label=x_label,
                 y_label=y_label,
                 percent=percent,
+                percent_denominator=percent_denominator,
                 orientation="h" if orientation == "Horizontal" else "v",
                 barmode="stack" if barmode == "Apiladas" else "group",
                 show_labels=show_labels,

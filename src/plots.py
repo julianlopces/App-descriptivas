@@ -75,6 +75,7 @@ def bar_chart(
     x_label: str,
     y_label: str,
     percent: bool,
+    percent_denominator: str,
     orientation: str,
     barmode: str,
     show_labels: bool,
@@ -87,10 +88,21 @@ def bar_chart(
 
     group_columns = [x] + ([color] if color else []) + ([facet] if facet else [])
     counts = plotted.groupby(group_columns, dropna=False).size().reset_index(name="frecuencia")
-    counts["porcentaje"] = counts["frecuencia"] / counts["frecuencia"].sum() * 100
+    denominator_columns = {
+        "total": [],
+        "x": [x],
+        "color": [color] if color else [],
+        "facet": [facet] if facet else [],
+    }.get(percent_denominator, [])
+    if denominator_columns:
+        denominator = counts.groupby(denominator_columns, dropna=False)["frecuencia"].transform("sum")
+    else:
+        denominator = counts["frecuencia"].sum()
+    counts["porcentaje"] = counts["frecuencia"] / denominator * 100
     value_col = "porcentaje" if percent else "frecuencia"
     label_col = f"{value_col}_etiqueta"
-    counts[label_col] = counts[value_col].map(lambda value: f"{value:.{label_decimals}f}")
+    suffix = "%" if percent else ""
+    counts[label_col] = counts[value_col].map(lambda value: f"{value:.{label_decimals}f}{suffix}")
 
     if orientation == "h":
         fig = px.bar(
