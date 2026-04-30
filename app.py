@@ -253,6 +253,13 @@ def inject_styles() -> None:
             max-width: 1420px;
         }
 
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) {
+            align-self: flex-start;
+            position: sticky;
+            top: 5.25rem;
+            z-index: 5;
+        }
+
         div[data-testid="stTabs"] button {
             background: #2d2d29;
             border: 1px solid var(--stroke);
@@ -703,11 +710,13 @@ def chart_style_controls() -> dict[str, object]:
                 ],
             )
             font_size = st.slider("Tamano de fuente", 10, 28, 16)
+        show_grid = st.toggle("Mostrar grilla", value=True)
     return {
         "palette": PALETTES[palette_name],
         "legend_title": "",
         "show_title": True,
         "title_alignment": "Centro",
+        "show_grid": show_grid,
         "paper_bg": paper_bg,
         "plot_bg": plot_bg,
         "text_color": text_color,
@@ -728,6 +737,7 @@ def style_figure(fig, style: dict[str, object]) -> None:
     font_size = int(style["font_size"])
     legend_title = str(style.get("legend_title", "")).strip()
     show_title = bool(style.get("show_title", True))
+    show_grid = bool(style.get("show_grid", True))
     title_alignment = str(style.get("title_alignment", "Centro"))
     title_x = {"Izquierda": 0.0, "Centro": 0.5, "Derecha": 1.0}.get(title_alignment, 0.5)
     title_anchor = {"Izquierda": "left", "Centro": "center", "Derecha": "right"}.get(
@@ -760,10 +770,13 @@ def style_figure(fig, style: dict[str, object]) -> None:
     )
     if legend_title:
         fig.update_layout(legend_title_text=legend_title)
+    x_showgrid = False if not show_grid else (False if fig.layout.xaxis.showgrid is False else True)
+    y_showgrid = False if not show_grid else (False if fig.layout.yaxis.showgrid is False else True)
     fig.update_xaxes(
         color=text_color,
         gridcolor=grid_color,
         linecolor=text_color,
+        showgrid=x_showgrid,
         tickfont={"color": text_color, "family": font_family, "size": font_size},
         title_font={"color": text_color, "family": font_family, "size": font_size},
         zerolinecolor=grid_color,
@@ -772,6 +785,7 @@ def style_figure(fig, style: dict[str, object]) -> None:
         color=text_color,
         gridcolor=grid_color,
         linecolor=text_color,
+        showgrid=y_showgrid,
         tickfont={"color": text_color, "family": font_family, "size": font_size},
         title_font={"color": text_color, "family": font_family, "size": font_size},
         zerolinecolor=grid_color,
@@ -953,6 +967,7 @@ def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFra
 
 
 def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: list[str]) -> None:
+    st.markdown('<div class="chart-sticky-scope"></div>', unsafe_allow_html=True)
     controls, output = st.columns([0.32, 0.68], gap="large")
     fig = None
 
