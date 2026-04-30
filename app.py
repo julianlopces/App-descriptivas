@@ -1029,13 +1029,15 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 )
                 percent_denominator = denominator_options[denominator_label]
             show_labels = st.toggle("Mostrar etiquetas en barras", value=True)
-            label_decimals = st.number_input(
-                "Decimales de etiquetas",
-                min_value=0,
-                max_value=6,
-                value=2,
-                step=1,
-            )
+            label_decimals = 2
+            if show_labels:
+                label_decimals = st.number_input(
+                    "Decimales de etiquetas",
+                    min_value=0,
+                    max_value=6,
+                    value=2,
+                    step=1,
+                )
             orientation = st.segmented_control("Orientacion", ["Vertical", "Horizontal"], default="Vertical")
             title = chart_title_controls(f"Barras de {x}", "bar")
             style_config.update(st.session_state["bar_title_options"])
