@@ -119,6 +119,7 @@ def bar_chart(
             text=label_col if show_labels else None,
         )
         fig.update_layout(xaxis_title=y_label, yaxis_title=x_label)
+        fig.update_yaxes(showgrid=False)
     else:
         fig = px.bar(
             counts,
@@ -133,6 +134,7 @@ def bar_chart(
             text=label_col if show_labels else None,
         )
         fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
+        fig.update_xaxes(showgrid=False)
     if show_labels:
         fig.update_traces(
             textposition="inside" if barmode == "stack" else "outside",
