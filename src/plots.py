@@ -1,10 +1,29 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import pandas as pd
 import plotly.express as px
 from plotly.graph_objects import Figure
 
 from src.descriptive_stats import _coerce_numeric
+
+
+def _configure_kaleido_browser() -> None:
+    if os.environ.get("BROWSER_PATH"):
+        return
+
+    browser_candidates = (
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+    )
+    for candidate in browser_candidates:
+        if Path(candidate).exists():
+            os.environ["BROWSER_PATH"] = candidate
+            return
 
 
 def _clean_for_plot(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
@@ -133,6 +152,7 @@ def scatter_plot(
 
 def to_png_bytes(fig: Figure) -> bytes | None:
     try:
+        _configure_kaleido_browser()
         width = fig.layout.width or 900
         height = fig.layout.height or 520
         return fig.to_image(
