@@ -272,6 +272,33 @@ def inject_styles() -> None:
             max-width: 1420px;
         }
 
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] {
+            align-items: flex-start;
+        }
+
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) {
+            align-self: flex-start;
+        }
+
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div {
+            max-height: calc(100vh - 6.25rem);
+            overflow-y: auto;
+            padding-right: 0.35rem;
+        }
+
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div::-webkit-scrollbar-thumb {
+            background: rgba(72, 72, 66, 0.8);
+            border-radius: 999px;
+        }
+
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
         .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) {
             align-self: flex-start;
         }
@@ -280,6 +307,8 @@ def inject_styles() -> None:
             position: sticky;
             top: 5.35rem;
             z-index: 6;
+            max-height: calc(100vh - 6.25rem);
+            overflow-y: auto;
         }
 
         .sticky-preview-panel {
