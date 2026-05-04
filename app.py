@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 from html import escape
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -38,6 +40,16 @@ FONT_FAMILIES = {
     "Courier New": "\"Courier New\", Courier, monospace",
     "Times New Roman": "\"Times New Roman\", Times, serif",
 }
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+LOGO_PATH = PROJECT_ROOT / "media" / "Equilibrium-Logo-Blanco.png"
+
+
+def get_logo_data_uri() -> str:
+    if not LOGO_PATH.exists():
+        return ""
+    encoded = base64.b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
 
 
 def inject_styles() -> None:
@@ -354,14 +366,17 @@ def inject_styles() -> None:
         }
 
         .logo-mark {
-            width: 34px;
+            width: 120px;
             height: 34px;
-            border-radius: 8px;
-            background: linear-gradient(145deg, #5b50d9, #2d276f);
-            display: grid;
-            place-items: center;
-            font-weight: 800;
-            color: white;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-mark img {
+            display: block;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
         }
 
         .title-copy strong {
@@ -533,6 +548,25 @@ def inject_styles() -> None:
     )
 
 
+def render_app_header(subtitle: str) -> None:
+    logo_data_uri = get_logo_data_uri()
+    logo_html = (
+        f'<img src="{logo_data_uri}" alt="Equilibrium logo">' if logo_data_uri else "QS"
+    )
+    st.markdown(
+        f"""
+        <div class="app-title">
+            <div class="logo-mark">{logo_html}</div>
+            <div class="title-copy">
+                <strong>QuanTi Stats</strong>
+                <span>{escape(subtitle)}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def init_state() -> None:
     defaults = {
         "df": None,
@@ -578,18 +612,7 @@ def dataset_card(df: pd.DataFrame | None) -> None:
 
 
 def load_controls() -> None:
-    st.markdown(
-        """
-        <div class="app-title">
-            <div class="logo-mark">QS</div>
-            <div class="title-copy">
-                <strong>QuanTi Stats</strong>
-                <span>v1.0 - campo rapido</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    render_app_header("v1.0 - campo rapido")
     st.divider()
     st.markdown('<div class="side-heading">Dataset</div>', unsafe_allow_html=True)
     dataset_card(st.session_state.df)
@@ -1407,18 +1430,7 @@ def main() -> None:
         else:
             continuous_vars, categorical_vars = [], []
 
-    st.markdown(
-        """
-        <div class="app-title">
-            <div class="logo-mark">QS</div>
-            <div class="title-copy">
-                <strong>QuanTi Stats</strong>
-                <span>Exploracion descriptiva modular</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    render_app_header("Exploracion descriptiva modular")
 
     df = st.session_state.df
     if df is None:
