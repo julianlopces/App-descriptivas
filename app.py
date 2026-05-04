@@ -958,10 +958,22 @@ def apply_axis_ranges(fig, axis_ranges: dict[str, tuple[float | None, float | No
     y_range = axis_ranges.get("y_range")
 
     if x_range and any(limit is not None for limit in x_range):
-        fig.update_xaxes(range=[x_range[0], x_range[1]])
+        x_min, x_max = x_range
+        if x_min is not None and x_max is not None:
+            fig.update_xaxes(range=[x_min, x_max], autorange=False)
+        elif x_min is not None:
+            fig.update_xaxes(range=[x_min, None], autorange="max")
+        elif x_max is not None:
+            fig.update_xaxes(range=[None, x_max], autorange="min")
 
     if y_range and any(limit is not None for limit in y_range):
-        fig.update_yaxes(range=[y_range[0], y_range[1]])
+        y_min, y_max = y_range
+        if y_min is not None and y_max is not None:
+            fig.update_yaxes(range=[y_min, y_max], autorange=False)
+        elif y_min is not None:
+            fig.update_yaxes(range=[y_min, None], autorange="max")
+        elif y_max is not None:
+            fig.update_yaxes(range=[None, y_max], autorange="min")
 
 
 def panel_start(title: str, subtitle: str = "") -> None:
