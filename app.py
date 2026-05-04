@@ -12,6 +12,11 @@ from src.descriptive_stats import (
     contingency_table,
     detect_variable_types,
 )
+from src.palettes import (
+    get_available_palettes,
+    get_default_style_for_palette,
+    get_palette_colors,
+)
 from src.plots import bar_chart, histogram, scatter_plot, to_png_bytes
 from src.utils import dataframe_to_csv_bytes, dataframe_to_excel_bytes, tables_to_excel_bytes
 
@@ -628,50 +633,6 @@ def overview_metrics(df: pd.DataFrame, continuous_vars: list[str], categorical_v
     st.markdown(html, unsafe_allow_html=True)
 
 
-PALETTES = {
-    "Violeta + menta": [
-        "#7468e8",
-        "#8be0c8",
-        "#f7d06b",
-        "#ff7b7b",
-        "#7ab8ff",
-        "#d89cff",
-        "#78d36f",
-        "#f59fc2",
-    ],
-    "Plotly": [
-        "#636efa",
-        "#ef553b",
-        "#00cc96",
-        "#ab63fa",
-        "#ffa15a",
-        "#19d3f3",
-        "#ff6692",
-        "#b6e880",
-    ],
-    "Alto contraste": [
-        "#00d2ff",
-        "#ffcc00",
-        "#ff4f81",
-        "#00e676",
-        "#b388ff",
-        "#ff9100",
-        "#40c4ff",
-        "#eeff41",
-    ],
-    "Sobrio": [
-        "#5b8def",
-        "#60d394",
-        "#f5b841",
-        "#e56b6f",
-        "#8d99ae",
-        "#b56576",
-        "#2ec4b6",
-        "#c77dff",
-    ],
-}
-
-
 def apply_trace_palette(fig, palette: list[str]) -> None:
     if not palette:
         return
@@ -686,19 +647,53 @@ def apply_trace_palette(fig, palette: list[str]) -> None:
             trace.update(marker={"color": color})
 
 
+def sync_palette_style_defaults(selected_palette: str) -> None:
+    new_defaults = get_default_style_for_palette(selected_palette)
+    applied_palette = st.session_state.get("chart_palette_applied")
+
+    for field, value in new_defaults.items():
+        state_key = f"chart_{field}"
+        if state_key not in st.session_state:
+            st.session_state[state_key] = value
+
+    if not applied_palette or applied_palette == selected_palette:
+        st.session_state["chart_palette_applied"] = selected_palette
+        return
+
+    old_defaults = get_default_style_for_palette(applied_palette)
+    for field, old_value in old_defaults.items():
+        state_key = f"chart_{field}"
+        if st.session_state.get(state_key) == old_value:
+            st.session_state[state_key] = new_defaults[field]
+
+    st.session_state["chart_palette_applied"] = selected_palette
+
+
 def chart_style_controls() -> dict[str, object]:
     with st.expander("Estilo del grafico", expanded=True):
-        palette_name = st.selectbox("Paleta de colores", list(PALETTES.keys()))
+        available_palettes = get_available_palettes()
+        palette_options = list(available_palettes.keys())
+        if "chart_palette_name" not in st.session_state:
+            st.session_state["chart_palette_name"] = palette_options[0]
+
+        palette_name = st.selectbox(
+            "Paleta de colores",
+            palette_options,
+            index=palette_options.index(st.session_state["chart_palette_name"]),
+            key="chart_palette_name",
+        )
+        sync_palette_style_defaults(palette_name)
         col1, col2 = st.columns(2)
         with col1:
-            paper_bg = st.color_picker("Fondo externo", "#2a2a27")
-            plot_bg = st.color_picker("Fondo del area", "#2a2a27")
-            text_color = st.color_picker("Color de letras", "#f3f0e8")
+            paper_bg = st.color_picker("Fondo externo", key="chart_paper_bg")
+            plot_bg = st.color_picker("Fondo del area", key="chart_plot_bg")
+            text_color = st.color_picker("Color de letras", key="chart_text_color")
         with col2:
-            grid_color = st.color_picker("Color de grilla", "#3d3d38")
+            grid_color = st.color_picker("Color de grilla", key="chart_grid_color")
             font_family = st.selectbox(
                 "Fuente",
                 [
+                    "Geologica",
                     "Arial",
                     "Inter",
                     "Verdana",
@@ -706,13 +701,13 @@ def chart_style_controls() -> dict[str, object]:
                     "Georgia",
                     "Courier New",
                     "Times New Roman",
-                    "Geologica"
                 ],
             )
             font_size = st.slider("Tamano de fuente", 10, 28, 16)
         show_grid = st.toggle("Mostrar grilla", value=True)
     return {
-        "palette": PALETTES[palette_name],
+        "palette_name": palette_name,
+        "palette": get_palette_colors(palette_name),
         "legend_title": "",
         "show_title": True,
         "title_alignment": "Centro",
@@ -1003,6 +998,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 df,
                 x=x,
                 color=None if color == "Ninguna" else color,
+                color_sequence=style_config["palette"],
                 title=title,
                 x_label=x_label,
                 y_label=y_label,
@@ -1069,6 +1065,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 x=x,
                 color=None if color == "Ninguna" else color,
                 facet=None if facet == "Ninguna" else facet,
+                color_sequence=style_config["palette"],
                 title=title,
                 x_label=x_label,
                 y_label=y_label,
@@ -1104,6 +1101,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 x=x,
                 y=y,
                 color=None if color == "Ninguna" else color,
+                color_sequence=style_config["palette"],
                 title=title,
                 x_label=x_label,
                 y_label=y_label,
