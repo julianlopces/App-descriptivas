@@ -28,10 +28,24 @@ st.set_page_config(
 )
 
 
+FONT_FAMILIES = {
+    "Geologica": "Geologica, Arial, sans-serif",
+    "Arial": "Arial, Helvetica, sans-serif",
+    "Inter": "Inter, Arial, sans-serif",
+    "Verdana": "Verdana, Arial, sans-serif",
+    "Helvetica": "Helvetica, Arial, sans-serif",
+    "Georgia": "Georgia, serif",
+    "Courier New": "\"Courier New\", Courier, monospace",
+    "Times New Roman": "\"Times New Roman\", Times, serif",
+}
+
+
 def inject_styles() -> None:
     st.markdown(
         """
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600;700&display=swap');
+
         :root {
             --bg: #20201e;
             --panel: #2a2a27;
@@ -692,16 +706,7 @@ def chart_style_controls() -> dict[str, object]:
             grid_color = st.color_picker("Color de grilla", key="chart_grid_color")
             font_family = st.selectbox(
                 "Fuente",
-                [
-                    "Geologica",
-                    "Arial",
-                    "Inter",
-                    "Verdana",
-                    "Helvetica",
-                    "Georgia",
-                    "Courier New",
-                    "Times New Roman",
-                ],
+                list(FONT_FAMILIES.keys()),
             )
             font_size = st.slider("Tamano de fuente", 10, 28, 16)
         show_grid = st.toggle("Mostrar grilla", value=True)
@@ -728,7 +733,8 @@ def style_figure(fig, style: dict[str, object]) -> None:
     plot_bg = str(style["plot_bg"])
     text_color = str(style["text_color"])
     grid_color = str(style["grid_color"])
-    font_family = str(style["font_family"])
+    selected_font = str(style["font_family"])
+    font_family = FONT_FAMILIES.get(selected_font, selected_font)
     font_size = int(style["font_size"])
     legend_title = str(style.get("legend_title", "")).strip()
     show_title = bool(style.get("show_title", True))
