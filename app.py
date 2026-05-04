@@ -877,16 +877,6 @@ def chart_title_controls(default_title: str, key_prefix: str) -> str:
     return title
 
 
-def _parse_axis_limit(value: str) -> float | None:
-    cleaned = value.strip().replace(",", ".")
-    if not cleaned:
-        return None
-    try:
-        return float(cleaned)
-    except ValueError:
-        return None
-
-
 def axis_range_controls(
     x_label: str,
     y_label: str,
@@ -902,22 +892,60 @@ def axis_range_controls(
 
     if use_custom_ranges:
         if x_numeric:
-            st.caption(f"{x_label}: deja vacio un limite para mantenerlo automatico.")
+            st.caption(f"{x_label}: activa minimo y/o maximo para fijar el rango.")
             col_x_min, col_x_max = st.columns(2)
             with col_x_min:
-                x_min_text = st.text_input("Min X", value="", key=f"{key_prefix}_x_min")
+                use_x_min = st.checkbox("Usar Min X", key=f"{key_prefix}_use_x_min")
+                x_min_value = st.number_input(
+                    "Min X",
+                    value=float(st.session_state.get(f"{key_prefix}_x_min_value", 0.0)),
+                    step=1.0,
+                    format="%.4f",
+                    key=f"{key_prefix}_x_min_value",
+                    disabled=not use_x_min,
+                )
             with col_x_max:
-                x_max_text = st.text_input("Max X", value="", key=f"{key_prefix}_x_max")
-            x_range = (_parse_axis_limit(x_min_text), _parse_axis_limit(x_max_text))
+                use_x_max = st.checkbox("Usar Max X", key=f"{key_prefix}_use_x_max")
+                x_max_value = st.number_input(
+                    "Max X",
+                    value=float(st.session_state.get(f"{key_prefix}_x_max_value", 0.0)),
+                    step=1.0,
+                    format="%.4f",
+                    key=f"{key_prefix}_x_max_value",
+                    disabled=not use_x_max,
+                )
+            x_range = (
+                float(x_min_value) if use_x_min else None,
+                float(x_max_value) if use_x_max else None,
+            )
 
         if y_numeric:
-            st.caption(f"{y_label}: deja vacio un limite para mantenerlo automatico.")
+            st.caption(f"{y_label}: activa minimo y/o maximo para fijar el rango.")
             col_y_min, col_y_max = st.columns(2)
             with col_y_min:
-                y_min_text = st.text_input("Min Y", value="", key=f"{key_prefix}_y_min")
+                use_y_min = st.checkbox("Usar Min Y", key=f"{key_prefix}_use_y_min")
+                y_min_value = st.number_input(
+                    "Min Y",
+                    value=float(st.session_state.get(f"{key_prefix}_y_min_value", 0.0)),
+                    step=1.0,
+                    format="%.4f",
+                    key=f"{key_prefix}_y_min_value",
+                    disabled=not use_y_min,
+                )
             with col_y_max:
-                y_max_text = st.text_input("Max Y", value="", key=f"{key_prefix}_y_max")
-            y_range = (_parse_axis_limit(y_min_text), _parse_axis_limit(y_max_text))
+                use_y_max = st.checkbox("Usar Max Y", key=f"{key_prefix}_use_y_max")
+                y_max_value = st.number_input(
+                    "Max Y",
+                    value=float(st.session_state.get(f"{key_prefix}_y_max_value", 0.0)),
+                    step=1.0,
+                    format="%.4f",
+                    key=f"{key_prefix}_y_max_value",
+                    disabled=not use_y_max,
+                )
+            y_range = (
+                float(y_min_value) if use_y_min else None,
+                float(y_max_value) if use_y_max else None,
+            )
 
     return {
         "x_range": x_range,
