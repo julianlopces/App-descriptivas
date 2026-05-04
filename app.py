@@ -954,26 +954,35 @@ def axis_range_controls(
 
 
 def apply_axis_ranges(fig, axis_ranges: dict[str, tuple[float | None, float | None] | None]) -> None:
+    def complete_range(axis_name: str, requested_range: tuple[float | None, float | None]) -> tuple[float | None, float | None]:
+        start, end = requested_range
+        if start is not None and end is not None:
+            return start, end
+        try:
+            full_fig = fig.full_figure_for_development(warn=False)
+            full_axis = getattr(full_fig.layout, f"{axis_name}axis", None)
+            computed_range = getattr(full_axis, "range", None) if full_axis else None
+            if computed_range and len(computed_range) == 2:
+                start = computed_range[0] if start is None else start
+                end = computed_range[1] if end is None else end
+        except Exception:
+            pass
+        return start, end
+
     x_range = axis_ranges.get("x_range")
     y_range = axis_ranges.get("y_range")
 
     if x_range and any(limit is not None for limit in x_range):
         x_min, x_max = x_range
-        if x_min is not None and x_max is not None:
+        x_min, x_max = complete_range("x", (x_min, x_max))
+        if x_min is not None or x_max is not None:
             fig.update_xaxes(range=[x_min, x_max], autorange=False)
-        elif x_min is not None:
-            fig.update_xaxes(range=[x_min, None], autorange="max")
-        elif x_max is not None:
-            fig.update_xaxes(range=[None, x_max], autorange="min")
 
     if y_range and any(limit is not None for limit in y_range):
         y_min, y_max = y_range
-        if y_min is not None and y_max is not None:
+        y_min, y_max = complete_range("y", (y_min, y_max))
+        if y_min is not None or y_max is not None:
             fig.update_yaxes(range=[y_min, y_max], autorange=False)
-        elif y_min is not None:
-            fig.update_yaxes(range=[y_min, None], autorange="max")
-        elif y_max is not None:
-            fig.update_yaxes(range=[None, y_max], autorange="min")
 
 
 def panel_start(title: str, subtitle: str = "") -> None:
