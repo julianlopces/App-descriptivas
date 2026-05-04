@@ -1095,12 +1095,16 @@ def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFra
 
 
 def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: list[str]) -> None:
-    st.markdown('<div class="chart-sticky-scope"></div>', unsafe_allow_html=True)
     controls, output = st.columns([0.32, 0.68], gap="large")
     fig = None
     axis_ranges = {"x_range": None, "y_range": None}
 
     with controls:
+        control_panel = st.container(height=760, border=False)
+    with output:
+        preview_panel = st.container(height=760, border=False)
+
+    with control_panel:
         st.markdown('<div class="side-heading">Tipo de analisis</div>', unsafe_allow_html=True)
         chart_type = st.radio(
             "Tipo de grafico",
@@ -1269,8 +1273,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
 
     style_figure(fig, style_config)
     apply_axis_ranges(fig, axis_ranges)
-    with output:
-        st.markdown('<div class="sticky-preview-panel">', unsafe_allow_html=True)
+    with preview_panel:
         panel_start("Vista del grafico", "Personalizable y listo para incluir en informes.")
         st.plotly_chart(fig, use_container_width=True)
         png = to_png_bytes(fig)
@@ -1288,7 +1291,6 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             unsafe_allow_html=True,
         )
         panel_end()
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def export_tab(tables: dict[str, pd.DataFrame]) -> None:
