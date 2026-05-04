@@ -274,9 +274,31 @@ def inject_styles() -> None:
 
         .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) {
             align-self: flex-start;
+        }
+
+        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) > div {
             position: sticky;
-            top: 5.25rem;
-            z-index: 5;
+            top: 5.35rem;
+            z-index: 6;
+        }
+
+        .sticky-preview-panel {
+            max-height: calc(100vh - 6.25rem);
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+
+        .sticky-preview-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sticky-preview-panel::-webkit-scrollbar-thumb {
+            background: rgba(72, 72, 66, 0.8);
+            border-radius: 999px;
+        }
+
+        .sticky-preview-panel::-webkit-scrollbar-track {
+            background: transparent;
         }
 
         div[data-testid="stTabs"] button {
@@ -747,9 +769,21 @@ def style_figure(fig, style: dict[str, object]) -> None:
     )
     current_title = fig.layout.title.text if fig.layout.title and fig.layout.title.text else ""
     title_text = f"<b>{escape(current_title)}</b>" if show_title and current_title else ""
+    trace_names = [
+        str(getattr(trace, "name", "") or "")
+        for trace in fig.data
+        if getattr(trace, "showlegend", True)
+    ]
+    legend_source = [legend_title] if legend_title else []
+    if getattr(fig.layout.legend.title, "text", None):
+        legend_source.append(str(fig.layout.legend.title.text))
+    legend_source.extend(trace_names)
+    longest_legend_text = max((len(text.strip()) for text in legend_source if text), default=0)
+    legend_margin = max(170, min(320, int(longest_legend_text * (font_size * 0.78)) + 42))
+    chart_width = 900 + max(0, legend_margin - 170)
     fig.update_layout(
         template="plotly_dark",
-        width=900,
+        width=chart_width,
         height=520,
         paper_bgcolor=paper_bg,
         plot_bgcolor=plot_bg,
@@ -772,7 +806,7 @@ def style_figure(fig, style: dict[str, object]) -> None:
             "y": 1.0,
             "yanchor": "top",
         },
-        margin={"l": 48, "r": 170, "t": 56, "b": 48},
+        margin={"l": 48, "r": legend_margin, "t": 56, "b": 48},
     )
     if legend_title:
         fig.update_layout(legend_title_text=legend_title)
@@ -1207,6 +1241,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
     style_figure(fig, style_config)
     apply_axis_ranges(fig, axis_ranges)
     with output:
+        st.markdown('<div class="sticky-preview-panel">', unsafe_allow_html=True)
         panel_start("Vista del grafico", "Personalizable y listo para incluir en informes.")
         st.plotly_chart(fig, use_container_width=True)
         png = to_png_bytes(fig)
@@ -1224,6 +1259,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             unsafe_allow_html=True,
         )
         panel_end()
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def export_tab(tables: dict[str, pd.DataFrame]) -> None:
