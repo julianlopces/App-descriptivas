@@ -49,6 +49,7 @@ dependencies = [
     { name = "pandas" },
     { name = "plotly" },
     { name = "streamlit" },
+    { name = "websockets" },
     { name = "xlrd" },
     { name = "xlsxwriter" },
 ]
@@ -60,6 +61,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.2" },
     { name = "plotly", specifier = ">=6.7.0" },
     { name = "streamlit", specifier = ">=1.57.0" },
+    { name = "websockets", specifier = ">=16.0" },
     { name = "xlrd", specifier = ">=2.0.2" },
     { name = "xlsxwriter", specifier = ">=3.2.9" },
 ]

@@ -3,8 +3,11 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
+import time
+import urllib.request
 from pathlib import Path
 from shutil import which
+import socket
 
 import pandas as pd
 import plotly.express as px
@@ -50,6 +53,7 @@ def _find_browser_executable() -> str | None:
 def _configure_kaleido_browser() -> None:
     if os.environ.get("BROWSER_PATH"):
         return
+
     browser_path = _find_browser_executable()
     if browser_path:
         os.environ["BROWSER_PATH"] = browser_path
@@ -63,7 +67,6 @@ def _render_png_with_browser(fig: Figure) -> bytes | None:
     width = int(fig.layout.width or 900)
     height = int(fig.layout.height or 520)
     paper_bg = getattr(fig.layout, "paper_bgcolor", None) or "#FFFFFF"
-
     figure_html = fig.to_html(
         full_html=False,
         include_plotlyjs=True,
@@ -87,6 +90,12 @@ def _render_png_with_browser(fig: Figure) -> bytes | None:
       overflow: hidden;
       background: {paper_bg};
     }}
+    body {{
+      visibility: hidden;
+    }}
+    body[data-ready="1"] {{
+      visibility: visible;
+    }}
     #chart-root {{
       width: {width}px;
       height: {height}px;
@@ -98,35 +107,166 @@ def _render_png_with_browser(fig: Figure) -> bytes | None:
   </style>
 </head>
 <body>
-  <div id="chart-root">
-    {figure_html}
-  </div>
+  <div id="chart-root">{figure_html}</div>
+  <script>
+    const waitFrames = (count) => new Promise((resolve) => {{
+      const step = () => {{
+        if (count <= 0) {{
+          resolve();
+          return;
+        }}
+        count -= 1;
+        requestAnimationFrame(step);
+      }};
+      requestAnimationFrame(step);
+    }});
+
+    const ensureGeologica = async () => {{
+      if (!document.fonts) return;
+      try {{
+        await document.fonts.load('400 16px Geologica');
+        await document.fonts.load('600 16px Geologica');
+        await document.fonts.ready;
+      }} catch (error) {{
+        console.warn('Font preload failed', error);
+      }}
+    }};
+
+    const reveal = async () => {{
+      await ensureGeologica();
+      await waitFrames(10);
+      if (window.Plotly && Plotly.Plots && Plotly.Plots.resize) {{
+        document.querySelectorAll('.js-plotly-plot').forEach((node) => Plotly.Plots.resize(node));
+      }}
+      await waitFrames(8);
+      document.body.dataset.ready = '1';
+      document.title = 'ready';
+    }};
+
+    window.addEventListener('load', () => {{
+      reveal();
+    }});
+  </script>
 </body>
 </html>
 """
 
     with tempfile.TemporaryDirectory() as tmpdir:
         html_path = Path(tmpdir) / "plot.html"
-        png_path = Path(tmpdir) / "plot.png"
         html_path.write_text(html, encoding="utf-8")
+
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            debug_port = sock.getsockname()[1]
+
         command = [
             browser_path,
             "--headless=new",
             "--disable-gpu",
             "--hide-scrollbars",
             "--force-device-scale-factor=2",
-            "--virtual-time-budget=4000",
+            f"--remote-debugging-port={debug_port}",
+            f"--user-data-dir={Path(tmpdir) / 'chrome-profile'}",
             f"--window-size={width},{height}",
-            f"--screenshot={png_path}",
             html_path.resolve().as_uri(),
         ]
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         try:
-            subprocess.run(command, check=True, capture_output=True, timeout=20)
-        except Exception:
-            return None
-        if not png_path.exists():
-            return None
-        return png_path.read_bytes()
+            return _capture_with_devtools(debug_port, html_path.resolve().as_uri())
+        finally:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+
+def _capture_with_devtools(debug_port: int, page_url: str) -> bytes | None:
+    try:
+        import asyncio
+        import base64
+        import json
+        import websockets
+    except Exception:
+        return None
+
+    def fetch_ws_url() -> str | None:
+        endpoint = f"http://127.0.0.1:{debug_port}/json/list"
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            try:
+                with urllib.request.urlopen(endpoint, timeout=1) as response:
+                    targets = json.loads(response.read().decode("utf-8"))
+                for target in targets:
+                    if target.get("type") == "page" and target.get("url") == page_url:
+                        return target.get("webSocketDebuggerUrl")
+                if targets:
+                    return targets[0].get("webSocketDebuggerUrl")
+            except Exception:
+                time.sleep(0.2)
+        return None
+
+    async def run_capture(ws_url: str) -> bytes | None:
+        async with websockets.connect(ws_url, max_size=None) as websocket:
+            message_id = 0
+
+            async def send(method: str, params: dict | None = None) -> dict | None:
+                nonlocal message_id
+                message_id += 1
+                await websocket.send(json.dumps({"id": message_id, "method": method, "params": params or {}}))
+                while True:
+                    raw = await websocket.recv()
+                    payload = json.loads(raw)
+                    if payload.get("id") == message_id:
+                        return payload
+
+            await send("Page.enable")
+            await send("Runtime.enable")
+
+            deadline = time.time() + 12
+            while time.time() < deadline:
+                response = await send(
+                    "Runtime.evaluate",
+                    {
+                        "expression": "document.title",
+                        "returnByValue": True,
+                    },
+                )
+                title = (
+                    response.get("result", {})
+                    .get("result", {})
+                    .get("value", "")
+                    if response
+                    else ""
+                )
+                if title == "ready":
+                    break
+                await asyncio.sleep(0.25)
+            else:
+                return None
+
+            screenshot = await send(
+                "Page.captureScreenshot",
+                {
+                    "format": "png",
+                    "fromSurface": True,
+                    "captureBeyondViewport": True,
+                },
+            )
+            data = screenshot.get("result", {}).get("data") if screenshot else None
+            if not data:
+                return None
+            return base64.b64decode(data)
+
+    ws_url = fetch_ws_url()
+    if not ws_url:
+        return None
+    return asyncio.run(run_capture(ws_url))
 
 
 def _clean_for_plot(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
