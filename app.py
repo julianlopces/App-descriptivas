@@ -746,6 +746,7 @@ def style_figure(fig, style: dict[str, object]) -> None:
         "center",
     )
     current_title = fig.layout.title.text if fig.layout.title and fig.layout.title.text else ""
+    title_text = f"<b>{escape(current_title)}</b>" if show_title and current_title else ""
     fig.update_layout(
         template="plotly_dark",
         width=900,
@@ -754,7 +755,7 @@ def style_figure(fig, style: dict[str, object]) -> None:
         plot_bgcolor=plot_bg,
         font={"color": text_color, "family": font_family, "size": font_size},
         title={
-            "text": current_title if show_title else "",
+            "text": title_text,
             "x": title_x,
             "xanchor": title_anchor,
             "font": {"color": text_color, "family": font_family, "size": font_size + 4},
@@ -766,8 +767,12 @@ def style_figure(fig, style: dict[str, object]) -> None:
             "title": {
                 "font": {"color": text_color, "family": font_family, "size": font_size + 1}
             },
+            "x": 1.02,
+            "xanchor": "left",
+            "y": 1.0,
+            "yanchor": "top",
         },
-        margin={"l": 48, "r": 24, "t": 56, "b": 48},
+        margin={"l": 48, "r": 170, "t": 56, "b": 48},
     )
     if legend_title:
         fig.update_layout(legend_title_text=legend_title)
@@ -807,6 +812,65 @@ def chart_title_controls(default_title: str, key_prefix: str) -> str:
         "title_alignment": title_alignment,
     }
     return title
+
+
+def _parse_axis_limit(value: str) -> float | None:
+    cleaned = value.strip().replace(",", ".")
+    if not cleaned:
+        return None
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def axis_range_controls(
+    x_label: str,
+    y_label: str,
+    *,
+    key_prefix: str,
+    x_numeric: bool,
+    y_numeric: bool,
+) -> dict[str, tuple[float | None, float | None] | None]:
+    st.markdown("**Rango de ejes**")
+    use_custom_ranges = st.toggle("Personalizar rango de ejes", value=False, key=f"{key_prefix}_use_axis_ranges")
+    x_range: tuple[float | None, float | None] | None = None
+    y_range: tuple[float | None, float | None] | None = None
+
+    if use_custom_ranges:
+        if x_numeric:
+            st.caption(f"{x_label}: deja vacio un limite para mantenerlo automatico.")
+            col_x_min, col_x_max = st.columns(2)
+            with col_x_min:
+                x_min_text = st.text_input("Min X", value="", key=f"{key_prefix}_x_min")
+            with col_x_max:
+                x_max_text = st.text_input("Max X", value="", key=f"{key_prefix}_x_max")
+            x_range = (_parse_axis_limit(x_min_text), _parse_axis_limit(x_max_text))
+
+        if y_numeric:
+            st.caption(f"{y_label}: deja vacio un limite para mantenerlo automatico.")
+            col_y_min, col_y_max = st.columns(2)
+            with col_y_min:
+                y_min_text = st.text_input("Min Y", value="", key=f"{key_prefix}_y_min")
+            with col_y_max:
+                y_max_text = st.text_input("Max Y", value="", key=f"{key_prefix}_y_max")
+            y_range = (_parse_axis_limit(y_min_text), _parse_axis_limit(y_max_text))
+
+    return {
+        "x_range": x_range,
+        "y_range": y_range,
+    }
+
+
+def apply_axis_ranges(fig, axis_ranges: dict[str, tuple[float | None, float | None] | None]) -> None:
+    x_range = axis_ranges.get("x_range")
+    y_range = axis_ranges.get("y_range")
+
+    if x_range and any(limit is not None for limit in x_range):
+        fig.update_xaxes(range=[x_range[0], x_range[1]])
+
+    if y_range and any(limit is not None for limit in y_range):
+        fig.update_yaxes(range=[y_range[0], y_range[1]])
 
 
 def panel_start(title: str, subtitle: str = "") -> None:
@@ -971,6 +1035,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
     st.markdown('<div class="chart-sticky-scope"></div>', unsafe_allow_html=True)
     controls, output = st.columns([0.32, 0.68], gap="large")
     fig = None
+    axis_ranges = {"x_range": None, "y_range": None}
 
     with controls:
         st.markdown('<div class="side-heading">Tipo de analisis</div>', unsafe_allow_html=True)
@@ -1000,6 +1065,13 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 key="hist_legend_title",
             )
             style_config["legend_title"] = legend_title
+            axis_ranges = axis_range_controls(
+                x_label,
+                y_label,
+                key_prefix="hist",
+                x_numeric=True,
+                y_numeric=True,
+            )
             fig = histogram(
                 df,
                 x=x,
@@ -1066,6 +1138,13 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 key="bar_legend_title",
             )
             style_config["legend_title"] = legend_title
+            axis_ranges = axis_range_controls(
+                x_label,
+                y_label,
+                key_prefix="bar",
+                x_numeric=orientation == "Horizontal",
+                y_numeric=orientation == "Vertical",
+            )
             fig = bar_chart(
                 df,
                 x=x,
@@ -1102,6 +1181,13 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 key="scatter_legend_title",
             )
             style_config["legend_title"] = legend_title
+            axis_ranges = axis_range_controls(
+                x_label,
+                y_label,
+                key_prefix="scatter",
+                x_numeric=True,
+                y_numeric=True,
+            )
             fig = scatter_plot(
                 df,
                 x=x,
@@ -1119,6 +1205,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
         return
 
     style_figure(fig, style_config)
+    apply_axis_ranges(fig, axis_ranges)
     with output:
         panel_start("Vista del grafico", "Personalizable y listo para incluir en informes.")
         st.plotly_chart(fig, use_container_width=True)
