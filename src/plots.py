@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import tempfile
 from pathlib import Path
+from shutil import which
 
 import pandas as pd
 import plotly.express as px
@@ -10,20 +13,120 @@ from plotly.graph_objects import Figure
 from src.descriptive_stats import _coerce_numeric
 
 
-def _configure_kaleido_browser() -> None:
-    if os.environ.get("BROWSER_PATH"):
-        return
+def _find_browser_executable() -> str | None:
+    browser_path = os.environ.get("BROWSER_PATH")
+    if browser_path and Path(browser_path).exists():
+        return browser_path
+
+    which_candidates = (
+        "chromium",
+        "chromium-browser",
+        "google-chrome",
+        "google-chrome-stable",
+        "chrome",
+        "msedge",
+    )
+    for candidate in which_candidates:
+        resolved = which(candidate)
+        if resolved:
+            return resolved
 
     browser_candidates = (
         "/usr/bin/chromium",
         "/usr/bin/chromium-browser",
         "/usr/bin/google-chrome",
         "/usr/bin/google-chrome-stable",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
     )
     for candidate in browser_candidates:
         if Path(candidate).exists():
-            os.environ["BROWSER_PATH"] = candidate
-            return
+            return candidate
+    return None
+
+
+def _configure_kaleido_browser() -> None:
+    if os.environ.get("BROWSER_PATH"):
+        return
+    browser_path = _find_browser_executable()
+    if browser_path:
+        os.environ["BROWSER_PATH"] = browser_path
+
+
+def _render_png_with_browser(fig: Figure) -> bytes | None:
+    browser_path = _find_browser_executable()
+    if not browser_path:
+        return None
+
+    width = int(fig.layout.width or 900)
+    height = int(fig.layout.height or 520)
+    paper_bg = getattr(fig.layout, "paper_bgcolor", None) or "#FFFFFF"
+
+    figure_html = fig.to_html(
+        full_html=False,
+        include_plotlyjs=True,
+        config={"displayModeBar": False, "staticPlot": True, "responsive": False},
+    )
+
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    html, body {{
+      margin: 0;
+      padding: 0;
+      width: {width}px;
+      height: {height}px;
+      overflow: hidden;
+      background: {paper_bg};
+    }}
+    #chart-root {{
+      width: {width}px;
+      height: {height}px;
+    }}
+    .js-plotly-plot, .plotly-graph-div {{
+      width: {width}px !important;
+      height: {height}px !important;
+    }}
+  </style>
+</head>
+<body>
+  <div id="chart-root">
+    {figure_html}
+  </div>
+</body>
+</html>
+"""
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        html_path = Path(tmpdir) / "plot.html"
+        png_path = Path(tmpdir) / "plot.png"
+        html_path.write_text(html, encoding="utf-8")
+        command = [
+            browser_path,
+            "--headless=new",
+            "--disable-gpu",
+            "--hide-scrollbars",
+            "--force-device-scale-factor=2",
+            "--virtual-time-budget=4000",
+            f"--window-size={width},{height}",
+            f"--screenshot={png_path}",
+            html_path.resolve().as_uri(),
+        ]
+        try:
+            subprocess.run(command, check=True, capture_output=True, timeout=20)
+        except Exception:
+            return None
+        if not png_path.exists():
+            return None
+        return png_path.read_bytes()
 
 
 def _clean_for_plot(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
@@ -184,6 +287,9 @@ def scatter_plot(
 
 
 def to_png_bytes(fig: Figure) -> bytes | None:
+    browser_png = _render_png_with_browser(fig)
+    if browser_png is not None:
+        return browser_png
     try:
         _configure_kaleido_browser()
         width = fig.layout.width or 900
