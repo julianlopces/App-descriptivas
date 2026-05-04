@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import OrderedDict
 
+from src.theme import INSTITUTIONAL_COLORS
+
 
 DEFAULT_STYLE = {
     "paper_bg": "#2a2a27",
@@ -11,10 +13,10 @@ DEFAULT_STYLE = {
 }
 
 EQUI_DEFAULT_STYLE = {
-    "paper_bg": "#FFFFFF",
-    "plot_bg": "#FFFFFF",
-    "text_color": "#020F50",
-    "grid_color": "#B6C4E5",
+    "paper_bg": INSTITUTIONAL_COLORS["white"],
+    "plot_bg": INSTITUTIONAL_COLORS["white"],
+    "text_color": INSTITUTIONAL_COLORS["primary"],
+    "grid_color": INSTITUTIONAL_COLORS["light_gray_blue"],
 }
 
 
@@ -24,43 +26,67 @@ def get_available_palettes() -> OrderedDict[str, list[str]]:
             (
                 "Paleta Equi",
                 [
-                    "#020F50",
-                    "#1955A6",
-                    "#7CCCBF",
-                    "#F7966B",
-                    "#F4B21B",
-                    "#788EC7",
-                    "#B6C4E5",
-                    "#F4D2A4",
+                    INSTITUTIONAL_COLORS["primary"],
+                    INSTITUTIONAL_COLORS["secondary_blue"],
+                    INSTITUTIONAL_COLORS["turquoise"],
+                    INSTITUTIONAL_COLORS["salmon"],
+                    INSTITUTIONAL_COLORS["yellow"],
+                    INSTITUTIONAL_COLORS["gray_blue"],
+                    INSTITUTIONAL_COLORS["light_gray_blue"],
+                    INSTITUTIONAL_COLORS["beige"],
                 ],
             ),
             (
                 "Paleta Equi 1",
-                ["#020F50", "#1955A6", "#7CCCBF", "#F7966B", "#F4B21B"],
+                [
+                    INSTITUTIONAL_COLORS["primary"],
+                    INSTITUTIONAL_COLORS["secondary_blue"],
+                    INSTITUTIONAL_COLORS["turquoise"],
+                    INSTITUTIONAL_COLORS["salmon"],
+                    INSTITUTIONAL_COLORS["yellow"],
+                ],
             ),
             (
                 "Paleta Equi 2",
-                ["#020F50", "#1955A6", "#788EC7", "#B6C4E5", "#7CCCBF"],
+                [
+                    INSTITUTIONAL_COLORS["primary"],
+                    INSTITUTIONAL_COLORS["secondary_blue"],
+                    INSTITUTIONAL_COLORS["gray_blue"],
+                    INSTITUTIONAL_COLORS["light_gray_blue"],
+                    INSTITUTIONAL_COLORS["turquoise"],
+                ],
             ),
             (
                 "Paleta Equi 3",
-                ["#020F50", "#F7966B", "#F4B21B", "#F4D2A4", "#1955A6"],
+                [
+                    INSTITUTIONAL_COLORS["primary"],
+                    INSTITUTIONAL_COLORS["salmon"],
+                    INSTITUTIONAL_COLORS["yellow"],
+                    INSTITUTIONAL_COLORS["beige"],
+                    INSTITUTIONAL_COLORS["secondary_blue"],
+                ],
             ),
             (
                 "Paleta Equi 4",
-                ["#020F50", "#000031", "#1955A6", "#788EC7", "#7CCCBF"],
+                [
+                    INSTITUTIONAL_COLORS["primary"],
+                    INSTITUTIONAL_COLORS["night_blue"],
+                    INSTITUTIONAL_COLORS["secondary_blue"],
+                    INSTITUTIONAL_COLORS["gray_blue"],
+                    INSTITUTIONAL_COLORS["turquoise"],
+                ],
             ),
             (
                 "Paleta Equi 5",
                 [
-                    "#020F50",
-                    "#1955A6",
-                    "#F7966B",
-                    "#7CCCBF",
-                    "#F4B21B",
-                    "#000031",
-                    "#788EC7",
-                    "#B6C4E5",
+                    INSTITUTIONAL_COLORS["primary"],
+                    INSTITUTIONAL_COLORS["secondary_blue"],
+                    INSTITUTIONAL_COLORS["salmon"],
+                    INSTITUTIONAL_COLORS["turquoise"],
+                    INSTITUTIONAL_COLORS["yellow"],
+                    INSTITUTIONAL_COLORS["night_blue"],
+                    INSTITUTIONAL_COLORS["gray_blue"],
+                    INSTITUTIONAL_COLORS["light_gray_blue"],
                 ],
             ),
             (

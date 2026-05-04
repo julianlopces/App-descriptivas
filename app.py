@@ -20,6 +20,7 @@ from src.palettes import (
     get_palette_colors,
 )
 from src.plots import bar_chart, histogram, scatter_plot, to_png_bytes
+from src.theme import INSTITUTIONAL_COLORS, get_institutional_css
 from src.utils import dataframe_to_csv_bytes, dataframe_to_excel_bytes, tables_to_excel_bytes
 
 
@@ -42,7 +43,7 @@ FONT_FAMILIES = {
 }
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-LOGO_PATH = PROJECT_ROOT / "media" / "Equilibrium-Logo-Blanco.png"
+LOGO_PATH = PROJECT_ROOT / "media" / "Equilibrium-Logo-Completo-Azul.png"
 
 
 def get_logo_data_uri() -> str:
@@ -54,496 +55,7 @@ def get_logo_data_uri() -> str:
 
 def inject_styles() -> None:
     st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600;700&display=swap');
-
-        :root {
-            --bg: #20201e;
-            --panel: #2a2a27;
-            --panel-soft: #30302c;
-            --stroke: #484842;
-            --text: #f3f0e8;
-            --muted: #bbb6aa;
-            --accent: #c9c2ff;
-            --accent-2: #a8ead8;
-            --accent-3: #7468e8;
-        }
-
-        .stApp {
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        header[data-testid="stHeader"] {
-            background: #ffffff;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-        }
-
-        [data-testid="stSidebar"] {
-            background: #252522;
-            border-right: 1px solid var(--stroke);
-        }
-
-        [data-testid="stSidebar"] * {
-            color: var(--text);
-        }
-
-        [data-testid="stSidebar"] input,
-        [data-testid="stSidebar"] textarea,
-        [data-testid="stSidebar"] select,
-        [data-testid="stSidebar"] [data-baseweb="select"] *,
-        [data-testid="stSidebar"] [data-baseweb="popover"] *,
-        [data-testid="stSidebar"] [data-baseweb="tag"] *,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderFileName"],
-        [data-testid="stSidebar"] [data-testid="stFileUploaderFileSize"],
-        [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] *,
-        [data-testid="stSidebar"] [data-testid="stUploadedFile"] *,
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] li *,
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] small {
-            color: #24232b !important;
-        }
-
-        [data-testid="stSidebar"] [data-baseweb="select"] > div,
-        [data-testid="stSidebar"] [data-baseweb="base-input"] > div,
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] section,
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] {
-            background: #f7f5ef !important;
-            border-color: #f7f5ef !important;
-        }
-
-        [data-testid="stSidebar"] [data-testid="stFileUploaderFile"],
-        [data-testid="stSidebar"] [data-testid="stUploadedFile"],
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] li {
-            background: #ebeef2 !important;
-            border-color: #ebeef2 !important;
-        }
-
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] button {
-            background: #ffffff !important;
-            border: 1px solid #c9c6bd !important;
-            color: #24232b !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] button *,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button *,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] p,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] span,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] div {
-            color: #24232b !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > div {
-            color: #24232b !important;
-        }
-
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] svg,
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] button svg {
-            color: #24232b !important;
-            fill: currentColor !important;
-            opacity: 1 !important;
-            stroke: currentColor !important;
-        }
-
-        [data-testid="stSidebar"] input::placeholder,
-        [data-testid="stSidebar"] textarea::placeholder,
-        [data-testid="stSidebar"] [data-baseweb="select"] input::placeholder {
-            color: #6f6a60 !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stSidebar"] svg {
-            color: inherit;
-            fill: currentColor;
-        }
-
-        [data-testid="stSidebar"] [data-baseweb="select"] svg,
-        [data-testid="stSidebar"] [data-testid="stFileUploader"] svg {
-            color: #3a3840 !important;
-            fill: currentColor;
-        }
-
-        [data-testid="stSidebar"] [role="option"] *,
-        [data-testid="stSidebar"] [data-baseweb="menu"] * {
-            color: #24232b !important;
-        }
-
-        [data-testid="stSidebar"] [data-testid="stExpander"],
-        [data-testid="stSidebar"] details,
-        [data-testid="stSidebar"] details summary {
-            background: #f7f5ef !important;
-            border-color: #f7f5ef !important;
-            color: #24232b !important;
-        }
-
-        [data-testid="stSidebar"] details summary *,
-        [data-testid="stSidebar"] [data-testid="stExpander"] summary *,
-        [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stMarkdownContainer"] *,
-        [data-testid="stSidebar"] [data-testid="stExpander"] p,
-        [data-testid="stSidebar"] [data-testid="stExpander"] span {
-            color: #24232b !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stSidebar"] details summary svg,
-        [data-testid="stSidebar"] [data-testid="stExpander"] summary svg {
-            color: #24232b !important;
-            fill: currentColor !important;
-            stroke: currentColor !important;
-            opacity: 1 !important;
-        }
-
-        h1, h2, h3 {
-            color: var(--text);
-            letter-spacing: 0;
-        }
-
-        [data-testid="stMain"] [data-testid="stWidgetLabel"],
-        [data-testid="stMain"] [data-testid="stWidgetLabel"] *,
-        [data-testid="stMain"] [data-testid="stRadio"] label,
-        [data-testid="stMain"] [data-testid="stRadio"] label *,
-        [data-testid="stMain"] [data-testid="stCheckbox"] label,
-        [data-testid="stMain"] [data-testid="stCheckbox"] label *,
-        [data-testid="stMain"] [data-testid="stToggle"] label,
-        [data-testid="stMain"] [data-testid="stToggle"] label *,
-        [data-testid="stMain"] [data-testid="stSlider"] label,
-        [data-testid="stMain"] [data-testid="stSlider"] label * {
-            color: #f3f0e8 !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stMain"] [data-baseweb="radio"] div,
-        [data-testid="stMain"] [data-baseweb="radio"] span,
-        [data-testid="stMain"] [data-baseweb="checkbox"] div,
-        [data-testid="stMain"] [data-baseweb="checkbox"] span {
-            color: #f3f0e8 !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stMain"] input,
-        [data-testid="stMain"] textarea,
-        [data-testid="stMain"] [data-baseweb="select"] *,
-        [data-testid="stMain"] [data-baseweb="base-input"] * {
-            color: #24232b !important;
-        }
-
-        [data-testid="stMain"] [data-baseweb="select"] > div,
-        [data-testid="stMain"] [data-baseweb="base-input"] > div {
-            background: #f3f4f7 !important;
-            border-color: #f3f4f7 !important;
-        }
-
-        [data-testid="stMain"] [data-baseweb="select"] svg {
-            color: #24232b !important;
-            fill: currentColor !important;
-        }
-
-        [data-testid="stMain"] [data-testid="stSegmentedControl"] button {
-            background: #2f2f2b !important;
-            border-color: #5a5a52 !important;
-            color: #f3f0e8 !important;
-        }
-
-        [data-testid="stMain"] [data-testid="stSegmentedControl"] button *,
-        [data-testid="stMain"] [data-testid="stSegmentedControl"] label,
-        [data-testid="stMain"] [data-testid="stSegmentedControl"] label * {
-            color: #f3f0e8 !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stMain"] [data-testid="stExpander"],
-        [data-testid="stMain"] details,
-        [data-testid="stMain"] details summary {
-            background: #f7f5ef !important;
-            border-color: #f7f5ef !important;
-            color: #24232b !important;
-        }
-
-        [data-testid="stMain"] details summary *,
-        [data-testid="stMain"] [data-testid="stExpander"] summary *,
-        [data-testid="stMain"] [data-testid="stExpander"] [data-testid="stMarkdownContainer"] *,
-        [data-testid="stMain"] [data-testid="stExpander"] p,
-        [data-testid="stMain"] [data-testid="stExpander"] span {
-            color: #24232b !important;
-            opacity: 1 !important;
-        }
-
-        [data-testid="stMain"] details summary svg,
-        [data-testid="stMain"] [data-testid="stExpander"] summary svg {
-            color: #24232b !important;
-            fill: currentColor !important;
-            stroke: currentColor !important;
-            opacity: 1 !important;
-        }
-
-        .block-container {
-            padding-top: 4.75rem;
-            max-width: 1420px;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] {
-            align-items: flex-start;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) {
-            align-self: flex-start;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div {
-            max-height: calc(100vh - 6.25rem);
-            overflow-y: auto;
-            padding-right: 0.35rem;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div::-webkit-scrollbar-thumb {
-            background: rgba(72, 72, 66, 0.8);
-            border-radius: 999px;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(1) > div::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) {
-            align-self: flex-start;
-        }
-
-        .chart-sticky-scope + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) > div {
-            position: sticky;
-            top: 5.35rem;
-            z-index: 6;
-            max-height: calc(100vh - 6.25rem);
-            overflow-y: auto;
-        }
-
-        .sticky-preview-panel {
-            max-height: calc(100vh - 6.25rem);
-            overflow-y: auto;
-            padding-right: 0.25rem;
-        }
-
-        .sticky-preview-panel::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .sticky-preview-panel::-webkit-scrollbar-thumb {
-            background: rgba(72, 72, 66, 0.8);
-            border-radius: 999px;
-        }
-
-        .sticky-preview-panel::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        div[data-testid="stTabs"] button {
-            background: #2d2d29;
-            border: 1px solid var(--stroke);
-            border-radius: 8px;
-            color: var(--muted);
-            min-height: 44px;
-            padding: 0.35rem 1rem;
-        }
-
-        div[data-testid="stTabs"] button[aria-selected="true"] {
-            background: #ebe8ff;
-            color: #24232b;
-            border-color: #ebe8ff;
-            font-weight: 700;
-        }
-
-        .app-title {
-            display: flex;
-            align-items: center;
-            gap: 0.72rem;
-            margin-bottom: 1rem;
-        }
-
-        .logo-mark {
-            width: 120px;
-            height: 34px;
-            display: flex;
-            align-items: center;
-        }
-
-        .logo-mark img {
-            display: block;
-            width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
-
-        .title-copy strong {
-            display: block;
-            font-size: 1.05rem;
-            line-height: 1.1;
-        }
-
-        .title-copy span {
-            color: var(--muted);
-            font-size: 0.78rem;
-        }
-
-        .side-heading {
-            color: var(--muted);
-            font-size: 0.76rem;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            margin: 1.25rem 0 0.45rem;
-            text-transform: uppercase;
-        }
-
-        .dataset-card,
-        .metric-card,
-        .panel,
-        .note-card {
-            background: var(--panel);
-            border: 1px solid var(--stroke);
-            border-radius: 8px;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
-        }
-
-        .dataset-card {
-            border-style: dashed;
-            padding: 1rem;
-            text-align: center;
-            margin-bottom: 0.8rem;
-        }
-
-        .dataset-card .file-name {
-            font-weight: 800;
-            color: var(--text);
-            overflow-wrap: anywhere;
-        }
-
-        .dataset-card .file-meta {
-            color: var(--muted);
-            font-size: 0.86rem;
-        }
-
-        .metric-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0.85rem;
-            margin: 0.35rem 0 1rem;
-        }
-
-        .metric-card {
-            min-height: 112px;
-            padding: 1rem;
-        }
-
-        .metric-card small {
-            color: var(--muted);
-            display: block;
-            font-weight: 800;
-            margin-bottom: 0.35rem;
-        }
-
-        .metric-card strong {
-            color: var(--text);
-            display: block;
-            font-size: 2rem;
-            line-height: 1;
-        }
-
-        .metric-card span {
-            color: var(--muted);
-            display: block;
-            font-size: 0.85rem;
-            margin-top: 0.35rem;
-        }
-
-        .panel {
-            padding: 1rem;
-            margin-top: 0.75rem;
-        }
-
-        .panel-title {
-            color: var(--text);
-            font-size: 1rem;
-            font-weight: 850;
-            margin-bottom: 0.15rem;
-        }
-
-        .panel-subtitle {
-            color: var(--muted);
-            font-size: 0.82rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .note-card {
-            background: #f0edff;
-            border-color: #f0edff;
-            color: #27243d;
-            font-size: 0.88rem;
-            margin-top: 0.8rem;
-            padding: 0.85rem 1rem;
-        }
-
-        .chip {
-            align-items: center;
-            background: #e8e4ff;
-            border-radius: 7px;
-            color: #2b2940;
-            display: flex;
-            font-size: 0.84rem;
-            justify-content: space-between;
-            margin: 0.34rem 0;
-            min-height: 32px;
-            padding: 0.34rem 0.55rem;
-        }
-
-        .chip.teal {
-            background: #d5f4eb;
-            color: #173d35;
-        }
-
-        .chip.dark {
-            background: #30302c;
-            border: 1px solid var(--stroke);
-            color: var(--muted);
-        }
-
-        .chip code {
-            background: rgba(255, 255, 255, 0.55);
-            border-radius: 5px;
-            color: inherit;
-            font-size: 0.68rem;
-            padding: 0.08rem 0.35rem;
-        }
-
-        .stDataFrame {
-            border: 1px solid var(--stroke);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        div[data-testid="stDownloadButton"] button,
-        div[data-testid="stButton"] button {
-            border-radius: 8px;
-            font-weight: 750;
-        }
-
-        @media (max-width: 1100px) {
-            .metric-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (max-width: 760px) {
-            .metric-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        </style>
-        """,
+        get_institutional_css(),
         unsafe_allow_html=True,
     )
 
@@ -565,6 +77,79 @@ def render_app_header(subtitle: str) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def format_table_value(value: object, max_decimals: int) -> object:
+    if isinstance(value, bool) or value is None:
+        return value
+    if pd.isna(value):
+        return ""
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        rounded = round(value, max_decimals)
+        if float(rounded).is_integer():
+            return str(int(rounded))
+        formatted = f"{rounded:.{max_decimals}f}"
+        return formatted.rstrip("0").rstrip(".")
+    return value
+
+
+def style_table(table: pd.DataFrame, max_decimals: int) -> pd.io.formats.style.Styler:
+    colors = INSTITUTIONAL_COLORS
+    formatter = {
+        column: (lambda value, decimals=max_decimals: format_table_value(value, decimals))
+        for column in table.columns
+    }
+    return table.style.format(formatter).set_table_styles(
+        [
+            {
+                "selector": "thead th",
+                "props": [
+                    ("background-color", colors["primary"]),
+                    ("color", colors["white"]),
+                    ("border", f"1px solid {colors['night_blue']}"),
+                    ("font-weight", "700"),
+                ],
+            },
+            {
+                "selector": "tbody td",
+                "props": [
+                    ("background-color", colors["white"]),
+                    ("color", colors["text_strong"]),
+                    ("border", f"1px solid {colors['night_blue']}"),
+                ],
+            },
+            {
+                "selector": "tbody th",
+                "props": [
+                    ("background-color", colors["panel_muted"]),
+                    ("color", colors["text_strong"]),
+                    ("border", f"1px solid {colors['night_blue']}"),
+                    ("font-weight", "600"),
+                ],
+            },
+            {
+                "selector": "table",
+                "props": [
+                    ("border-collapse", "collapse"),
+                    ("border", f"1px solid {colors['night_blue']}"),
+                ],
+            },
+        ]
+    )
+
+
+def render_styled_table(table: pd.DataFrame, *, height: int, key_prefix: str) -> None:
+    max_decimals = st.number_input(
+        "Decimales máximos visibles",
+        min_value=0,
+        max_value=6,
+        value=2,
+        step=1,
+        key=f"{key_prefix}_table_decimals",
+    )
+    st.dataframe(style_table(table, int(max_decimals)), use_container_width=True, height=height)
 
 
 def init_state() -> None:
@@ -612,7 +197,7 @@ def dataset_card(df: pd.DataFrame | None) -> None:
 
 
 def load_controls() -> None:
-    render_app_header("v1.0 - campo rapido")
+    render_app_header("v1.0 - campo rápido")
     st.divider()
     st.markdown('<div class="side-heading">Dataset</div>', unsafe_allow_html=True)
     dataset_card(st.session_state.df)
@@ -642,7 +227,7 @@ def load_controls() -> None:
             sheet_name = st.selectbox("Hoja de Excel", sheets)
         else:
             csv_encoding = st.selectbox(
-                "Codificacion",
+                "Codificación",
                 ["utf-8", "utf-8-sig", "latin-1", "cp1252"],
                 index=0,
             )
@@ -677,7 +262,7 @@ def load_controls() -> None:
 def variable_controls(df: pd.DataFrame) -> tuple[list[str], list[str]]:
     all_columns = list(df.columns)
 
-    st.markdown('<div class="side-heading">Clasificacion</div>', unsafe_allow_html=True)
+    st.markdown('<div class="side-heading">Clasificación</div>', unsafe_allow_html=True)
     with st.expander("Ajustar tipos", expanded=False):
         continuous = st.multiselect(
             "Continuas",
@@ -686,7 +271,7 @@ def variable_controls(df: pd.DataFrame) -> tuple[list[str], list[str]]:
         )
         categorical_options = [c for c in all_columns if c not in continuous]
         categorical = st.multiselect(
-            "Categoricas",
+            "Categóricas",
             categorical_options,
             default=[c for c in st.session_state.categorical_vars if c in categorical_options],
         )
@@ -712,8 +297,8 @@ def overview_metrics(df: pd.DataFrame, continuous_vars: list[str], categorical_v
     complete_rows = int(df.dropna().shape[0])
     html = f"""
     <div class="metric-grid">
-        {metric_html("N total", f"{df.shape[0]:,}", "casos validos en la base")}
-        {metric_html("Variables", f"{df.shape[1]:,}", f"{len(continuous_vars)} cont - {len(categorical_vars)} cat")}
+        {metric_html("N total", f"{df.shape[0]:,}", "casos válidos en la base")}
+        {metric_html("Variables", f"{df.shape[1]:,}", f"{len(continuous_vars)} cont. - {len(categorical_vars)} cat.")}
         {metric_html("Perdidos", f"{missing:,}", "celdas sin dato")}
         {metric_html("Filas completas", f"{complete_rows:,}", "sin valores perdidos")}
     </div>
@@ -758,7 +343,7 @@ def sync_palette_style_defaults(selected_palette: str) -> None:
 
 
 def chart_style_controls() -> dict[str, object]:
-    with st.expander("Estilo del grafico", expanded=True):
+    with st.expander("Estilo del gráfico", expanded=True):
         available_palettes = get_available_palettes()
         palette_options = list(available_palettes.keys())
         if "chart_palette_name" not in st.session_state:
@@ -782,7 +367,7 @@ def chart_style_controls() -> dict[str, object]:
                 "Fuente",
                 list(FONT_FAMILIES.keys()),
             )
-            font_size = st.slider("Tamano de fuente", 10, 28, 16)
+            font_size = st.slider("Tamaño de fuente", 10, 28, 16)
         show_grid = st.toggle("Mostrar grilla", value=True)
     return {
         "palette_name": palette_name,
@@ -885,10 +470,10 @@ def style_figure(fig, style: dict[str, object]) -> None:
 
 
 def chart_title_controls(default_title: str, key_prefix: str) -> str:
-    title = st.text_input("Titulo", default_title, key=f"{key_prefix}_title")
-    show_title = st.toggle("Mostrar titulo", value=True, key=f"{key_prefix}_show_title")
+    title = st.text_input("Título", default_title, key=f"{key_prefix}_title")
+    show_title = st.toggle("Mostrar título", value=True, key=f"{key_prefix}_show_title")
     title_alignment = st.segmented_control(
-        "Alineacion del titulo",
+        "Alineación del título",
         ["Izquierda", "Centro", "Derecha"],
         default="Centro",
         key=f"{key_prefix}_title_alignment",
@@ -915,7 +500,7 @@ def axis_range_controls(
 
     if use_custom_ranges:
         if x_numeric:
-            st.caption(f"{x_label}: activa minimo y/o maximo para fijar el rango.")
+            st.caption(f"{x_label}: activa mínimo y/o máximo para fijar el rango.")
             col_x_min, col_x_max = st.columns(2)
             with col_x_min:
                 use_x_min = st.checkbox("Usar Min X", key=f"{key_prefix}_use_x_min")
@@ -943,7 +528,7 @@ def axis_range_controls(
             )
 
         if y_numeric:
-            st.caption(f"{y_label}: activa minimo y/o maximo para fijar el rango.")
+            st.caption(f"{y_label}: activa mínimo y/o máximo para fijar el rango.")
             col_y_min, col_y_max = st.columns(2)
             with col_y_min:
                 use_y_min = st.checkbox("Usar Min Y", key=f"{key_prefix}_use_y_min")
@@ -1029,12 +614,12 @@ def render_empty_state() -> None:
         <div class="panel">
             <div class="panel-title">Carga una base para comenzar</div>
             <div class="panel-subtitle">
-                Usa el panel izquierdo para subir un CSV, XLSX o XLS. Luego podras clasificar variables,
-                clasificar variables y generar tablas o graficos desde los modulos horizontales.
+                Usa el panel izquierdo para subir un CSV, XLSX o XLS. Luego podrás clasificar variables,
+                clasificar variables y generar tablas o gráficos desde los módulos horizontales.
             </div>
             <div class="note-card">
                 El flujo queda organizado como un tablero: dataset y variables a la izquierda;
-                analisis, tablas, graficos y exportacion a la derecha.
+                análisis, tablas, gráficos y exportación a la derecha.
             </div>
         </div>
         """,
@@ -1049,14 +634,14 @@ def continuous_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
         default=columns,
         key="continuous_table_filter",
     )
-    panel_start("Variables continuas", "Conteo, perdidos, tendencia central, dispersion y percentiles.")
+    panel_start("Variables continuas", "Conteo, perdidos, tendencia central, dispersión y percentiles.")
     if not selected_columns:
         st.info("Selecciona al menos una variable continua para mostrar la tabla.")
         panel_end()
         return pd.DataFrame()
 
     table = continuous_summary(df, selected_columns)
-    st.dataframe(table, use_container_width=True, height=430)
+    render_styled_table(table, height=430, key_prefix="continuous")
     if not table.empty:
         col_csv, col_xlsx = st.columns(2)
         with col_csv:
@@ -1081,20 +666,20 @@ def continuous_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
 
 def categorical_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     selected_columns = st.multiselect(
-        "Variables categoricas a mostrar",
+        "Variables categóricas a mostrar",
         columns,
         default=columns,
         key="categorical_table_filter",
     )
-    max_levels = st.slider("Maximo de categorias por variable", 5, 100, 30)
-    panel_start("Variables categoricas", "Frecuencias absolutas, porcentajes y valores perdidos.")
+    max_levels = st.slider("Máximo de categorías por variable", 5, 100, 30)
+    panel_start("Variables categóricas", "Frecuencias absolutas, porcentajes y valores perdidos.")
     if not selected_columns:
-        st.info("Selecciona al menos una variable categorica para mostrar la tabla.")
+        st.info("Selecciona al menos una variable categórica para mostrar la tabla.")
         panel_end()
         return pd.DataFrame()
 
     table = categorical_summary(df, selected_columns, max_levels=max_levels)
-    st.dataframe(table, use_container_width=True, height=430)
+    render_styled_table(table, height=430, key_prefix="categorical")
     if not table.empty:
         col_csv, col_xlsx = st.columns(2)
         with col_csv:
@@ -1119,12 +704,12 @@ def categorical_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
 
 def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFrame:
     if len(categorical_vars) < 2:
-        st.info("Selecciona al menos dos variables categoricas.")
+        st.info("Selecciona al menos dos variables categóricas.")
         return pd.DataFrame()
 
     controls, output = st.columns([0.34, 0.66], gap="large")
     with controls:
-        st.markdown('<div class="side-heading">Configuracion</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-heading">Configuración</div>', unsafe_allow_html=True)
         row_var = st.selectbox("Filas", categorical_vars)
         col_var = st.selectbox("Columnas", [c for c in categorical_vars if c != row_var])
         mode = st.selectbox(
@@ -1142,7 +727,7 @@ def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFra
 
     with output:
         panel_start(f"{row_var} x {col_var}", mode)
-        st.dataframe(table, use_container_width=True, height=430)
+        render_styled_table(table, height=430, key_prefix="cross")
         export_table = table.reset_index()
         col_csv, col_xlsx = st.columns(2)
         with col_csv:
@@ -1177,10 +762,10 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
         preview_panel = st.container(height=760, border=False)
 
     with control_panel:
-        st.markdown('<div class="side-heading">Tipo de analisis</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-heading">Tipo de análisis</div>', unsafe_allow_html=True)
         chart_type = st.radio(
-            "Tipo de grafico",
-            ["Barras", "Histograma", "Dispersion"],
+            "Tipo de gráfico",
+            ["Barras", "Histograma", "Dispersión"],
             horizontal=False,
             label_visibility="collapsed",
         )
@@ -1191,7 +776,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 st.info("No hay variables continuas seleccionadas.")
                 return
             x = st.selectbox("Variable continua", continuous_vars)
-            color = st.selectbox("Agrupacion/color", ["Ninguna"] + categorical_vars)
+            color = st.selectbox("Agrupación/color", ["Ninguna"] + categorical_vars)
             bins = st.slider("Bins", 5, 100, 30)
             percent = st.toggle("Mostrar porcentajes", value=False)
             title = chart_title_controls(f"Histograma de {x}", "hist")
@@ -1199,7 +784,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             x_label = st.text_input("Eje X", x)
             y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia")
             legend_title = st.text_input(
-                "Titulo de la leyenda",
+                "Título de la leyenda",
                 "" if color == "Ninguna" else color,
                 key="hist_legend_title",
             )
@@ -1227,11 +812,11 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
 
         elif chart_type == "Barras":
             if not categorical_vars:
-                st.info("No hay variables categoricas seleccionadas.")
+                st.info("No hay variables categóricas seleccionadas.")
                 return
-            x = st.selectbox("Variable categorica", categorical_vars)
+            x = st.selectbox("Variable de conteo/principal", categorical_vars)
             color_options = [c for c in categorical_vars if c != x]
-            color = st.selectbox("Variable de apilado/color", ["Ninguna"] + color_options)
+            color = st.selectbox("Variable para desagregar/color", ["Ninguna"] + color_options)
             facet_options = [
                 c
                 for c in categorical_vars
@@ -1266,13 +851,13 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                     value=2,
                     step=1,
                 )
-            orientation = st.segmented_control("Orientacion", ["Vertical", "Horizontal"], default="Vertical")
+            orientation = st.segmented_control("Orientación", ["Vertical", "Horizontal"], default="Vertical")
             title = chart_title_controls(f"Barras de {x}", "bar")
             style_config.update(st.session_state["bar_title_options"])
             x_label = st.text_input("Eje X", x)
             y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia")
             legend_title = st.text_input(
-                "Titulo de la leyenda",
+                "Título de la leyenda",
                 "" if color == "Ninguna" else color,
                 key="bar_legend_title",
             )
@@ -1315,7 +900,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             x_label = st.text_input("Eje X", x)
             y_label = st.text_input("Eje Y", y)
             legend_title = st.text_input(
-                "Titulo de la leyenda",
+                "Título de la leyenda",
                 "" if color == "Ninguna" else color,
                 key="scatter_legend_title",
             )
@@ -1346,18 +931,18 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
     style_figure(fig, style_config)
     apply_axis_ranges(fig, axis_ranges)
     with preview_panel:
-        panel_start("Vista del grafico", "Personalizable y listo para incluir en informes.")
+        panel_start("Vista del gráfico", "Personalizable y listo para incluir en informes.")
         st.plotly_chart(fig, use_container_width=True)
         png = to_png_bytes(fig)
         if png:
             st.download_button("Descargar PNG", png, "grafico.png", "image/png")
         else:
-            st.caption("La exportacion PNG requiere que kaleido funcione correctamente en el entorno.")
+            st.caption("La exportación PNG requiere que kaleido funcione correctamente en el entorno.")
         st.markdown(
             """
             <div class="note-card">
-                Tip: usa color o agrupacion para comparar segmentos. Para informes, exporta PNG o descarga
-                la tabla base del modulo correspondiente.
+                Tip: usa color o agrupación para comparar segmentos. Para informes, exporta PNG o descarga
+                la tabla base del módulo correspondiente.
             </div>
             """,
             unsafe_allow_html=True,
@@ -1405,7 +990,7 @@ def export_tab(tables: dict[str, pd.DataFrame]) -> None:
 
 def preview_tab(df: pd.DataFrame) -> None:
     panel_start("Vista previa del dataset", "Primeras filas y estructura general de la base.")
-    st.dataframe(df.head(80), use_container_width=True, height=460)
+    render_styled_table(df.head(80), height=460, key_prefix="preview")
     missing_by_column = (
         df.isna()
         .sum()
@@ -1414,7 +999,7 @@ def preview_tab(df: pd.DataFrame) -> None:
         .sort_values("valores_perdidos", ascending=False)
     )
     with st.expander("Valores perdidos por variable"):
-        st.dataframe(missing_by_column, use_container_width=True, height=300)
+        render_styled_table(missing_by_column, height=300, key_prefix="missing")
     panel_end()
 
 
@@ -1430,7 +1015,7 @@ def main() -> None:
         else:
             continuous_vars, categorical_vars = [], []
 
-    render_app_header("Exploracion descriptiva modular")
+    render_app_header("Exploración descriptiva modular")
 
     df = st.session_state.df
     if df is None:
@@ -1446,7 +1031,7 @@ def main() -> None:
     }
 
     tab_graphs, tab_cross, tab_cont, tab_cat, tab_export, tab_preview = st.tabs(
-        ["Graficos", "Tablas cruzadas", "Continuas", "Categoricas", "Exportar", "Vista previa"]
+        ["Gráficos", "Tablas cruzadas", "Continuas", "Categóricas", "Exportar", "Vista previa"]
     )
 
     with tab_graphs:
