@@ -608,6 +608,47 @@ def get_institutional_css() -> str:
             padding: 0.85rem 1rem;
         }}
 
+        .instruction-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.9rem;
+            margin-top: 0.9rem;
+        }}
+
+        .instruction-card {{
+            background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(247,250,242,1) 100%);
+            border: 1px solid var(--stroke);
+            border-radius: 8px;
+            padding: 0.95rem 1rem;
+            box-shadow: 0 10px 20px rgba(2, 15, 80, 0.05);
+        }}
+
+        .instruction-card h4 {{
+            margin: 0 0 0.5rem 0;
+            color: var(--accent);
+            font-size: 0.96rem;
+            font-weight: 700;
+        }}
+
+        .instruction-card p {{
+            margin: 0 0 0.55rem 0;
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }}
+
+        .instruction-card ul {{
+            margin: 0;
+            padding-left: 1rem;
+            color: var(--text-strong);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }}
+
+        .instruction-card li + li {{
+            margin-top: 0.2rem;
+        }}
+
         .chip {{
             align-items: center;
             background: var(--accent-soft);

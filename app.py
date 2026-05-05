@@ -903,7 +903,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
         st.markdown('<div class="side-heading">Tipo de análisis</div>', unsafe_allow_html=True)
         chart_type = st.radio(
             "Tipo de gráfico",
-            ["Barras", "Histograma", "Dispersión"],
+            ["Barras", "Histograma", "Gráfico de dispersión"],
             horizontal=False,
             label_visibility="collapsed",
         )
@@ -1147,6 +1147,79 @@ def preview_tab(df: pd.DataFrame) -> None:
     panel_end()
 
 
+def instructions_tab() -> None:
+    panel_start(
+        "Instrucciones de uso",
+        "Guía rápida de lo que puedes hacer en cada módulo de la app.",
+    )
+    st.markdown(
+        """
+        <div class="note-card">
+            Sugerencia de flujo: carga la base en el panel izquierdo, revisa la clasificaci&oacute;n de variables y
+            luego entra al m&oacute;dulo que necesites para explorar, tabular o exportar resultados.
+        </div>
+        <div class="instruction-grid">
+            <div class="instruction-card">
+                <h4>Carga y clasificaci&oacute;n</h4>
+                <p>Desde el panel izquierdo subes la base y confirmas qu&eacute; variables son continuas o categ&oacute;ricas.</p>
+                <ul>
+                    <li>Carga archivos CSV, XLSX o XLS.</li>
+                    <li>Elige hoja, codificaci&oacute;n o separador si hace falta.</li>
+                    <li>Ajusta manualmente la clasificaci&oacute;n de variables.</li>
+                </ul>
+            </div>
+            <div class="instruction-card">
+                <h4>Vista previa</h4>
+                <p>Sirve para revisar r&aacute;pidamente las primeras filas del dataset antes de seguir con el an&aacute;lisis.</p>
+                <ul>
+                    <li>Inspecciona las primeras filas de la base cargada.</li>
+                    <li>Revisa valores perdidos por variable.</li>
+                    <li>Confirma nombres de columnas y estructura general del archivo.</li>
+                </ul>
+            </div>
+            <div class="instruction-card">
+                <h4>Gr&aacute;ficos</h4>
+                <p>Construye visualizaciones personalizadas para an&aacute;lisis e informes.</p>
+                <ul>
+                    <li>Genera barras, histogramas o gr&aacute;ficos de dispersi&oacute;n.</li>
+                    <li>Personaliza t&iacute;tulos, ejes, colores, leyenda y rangos.</li>
+                    <li>Exporta el gr&aacute;fico como PNG cuando est&eacute; disponible.</li>
+                </ul>
+            </div>
+            <div class="instruction-card">
+                <h4>Tablas cruzadas</h4>
+                <p>Produce tablas masivas entre variables principales y desagregaciones sociodemogr&aacute;ficas.</p>
+                <ul>
+                    <li>Selecciona varias variables principales.</li>
+                    <li>Selecciona varias variables de desagregaci&oacute;n.</li>
+                    <li>Descarga un Excel con una hoja por variable principal.</li>
+                </ul>
+            </div>
+            <div class="instruction-card">
+                <h4>Continuas</h4>
+                <p>Resume variables num&eacute;ricas con estad&iacute;sticos descriptivos listos para reporte.</p>
+                <ul>
+                    <li>Media, mediana, desviaci&oacute;n est&aacute;ndar y percentiles.</li>
+                    <li>Conteo de v&aacute;lidos y perdidos.</li>
+                    <li>Descarga la tabla en CSV o XLSX.</li>
+                </ul>
+            </div>
+            <div class="instruction-card">
+                <h4>Categ&oacute;ricas</h4>
+                <p>Revisa frecuencias, porcentajes y valores perdidos por categor&iacute;a.</p>
+                <ul>
+                    <li>Filtra qu&eacute; variables mostrar.</li>
+                    <li>Controla el m&aacute;ximo de categor&iacute;as visibles.</li>
+                    <li>Descarga la tabla en CSV o XLSX.</li>
+                </ul>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    panel_end()
+
+
 def main() -> None:
     inject_styles()
     init_state()
@@ -1174,10 +1247,14 @@ def main() -> None:
         "categoricas": categorical_summary(df, selected_categorical, max_levels=30),
     }
 
-    tab_graphs, tab_cross, tab_cont, tab_cat, tab_export, tab_preview = st.tabs(
-        ["Gráficos", "Tablas cruzadas", "Continuas", "Categóricas", "Exportar", "Vista previa"]
+    tab_instructions, tab_preview, tab_graphs, tab_cross, tab_cont, tab_cat = st.tabs(
+        ["Instrucciones", "Vista previa", "Gráficos", "Tablas cruzadas", "Continuas", "Categóricas"]
     )
 
+    with tab_instructions:
+        instructions_tab()
+    with tab_preview:
+        preview_tab(df)
     with tab_graphs:
         charts_tab(df, selected_continuous, selected_categorical)
     with tab_cross:
@@ -1188,10 +1265,6 @@ def main() -> None:
         tables["continuas"] = continuous_tab(df, selected_continuous)
     with tab_cat:
         tables["categoricas"] = categorical_tab(df, selected_categorical)
-    with tab_export:
-        export_tab(tables)
-    with tab_preview:
-        preview_tab(df)
 
 
 if __name__ == "__main__":
