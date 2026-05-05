@@ -520,7 +520,12 @@ def axis_range_controls(
     y_numeric: bool,
 ) -> dict[str, tuple[float | None, float | None] | None]:
     st.markdown("**Rango de ejes**")
-    use_custom_ranges = st.toggle("Personalizar rango de ejes", value=False, key=f"{key_prefix}_use_axis_ranges")
+    use_custom_ranges = st.toggle(
+        "Personalizar rango de ejes",
+        value=False,
+        key=f"{key_prefix}_use_axis_ranges",
+        help="Permite fijar el mínimo y/o el máximo de los ejes. Si completas solo uno, el otro se calcula automáticamente.",
+    )
     x_range: tuple[float | None, float | None] | None = None
     y_range: tuple[float | None, float | None] | None = None
 
@@ -795,18 +800,19 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             "Variables principales",
             categorical_vars,
             key="cross_main_vars",
-            help="Estas variables se usarán como columnas en todas las tablas.",
+            help="Estas variables se usarán como columnas en todas las tablas del Excel.",
         )
         disaggregation_vars = st.multiselect(
             "Variables de desagregación sociodemográfica",
             categorical_vars,
             key="cross_disagg_vars",
-            help="Estas variables se usarán como filas en todas las tablas.",
+            help="Estas variables se usarán como filas en todas las tablas del Excel.",
         )
         table_type_label = st.selectbox(
             "Tipo de tabla",
             list(TABLE_TYPE_LABELS.values()),
             key="cross_table_type",
+            help="Este formato se aplicará a todas las tablas cruzadas generadas en el archivo.",
         )
         st.caption(
             "El Excel tendrá una hoja por variable principal y dentro de cada hoja aparecerán todas "
@@ -875,6 +881,7 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
             key="cross_download_excel",
+            help="Descarga un Excel con una hoja por variable principal y una tabla por cada desagregación.",
         )
         panel_end()
 
@@ -906,18 +913,19 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             if not continuous_vars:
                 st.info("No hay variables continuas seleccionadas.")
                 return
-            x = st.selectbox("Variable continua", continuous_vars)
+            x = st.selectbox("Variable continua", continuous_vars, help="Variable numérica que se distribuirá en el histograma.")
             color = st.selectbox("Agrupación/color", ["Ninguna"] + categorical_vars)
-            bins = st.slider("Bins", 5, 100, 30)
-            percent = st.toggle("Mostrar porcentajes", value=False)
+            bins = st.slider("Bins", 5, 100, 30, help="Cantidad de intervalos usados para agrupar los datos.")
+            percent = st.toggle("Mostrar porcentajes", value=False, help="Si se activa, las barras se expresan en porcentaje en vez de frecuencia.")
             title = chart_title_controls(f"Histograma de {x}", "hist")
             style_config.update(st.session_state["hist_title_options"])
-            x_label = st.text_input("Eje X", x)
-            y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia")
+            x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
+            y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia", help="Texto visible del eje vertical.")
             legend_title = st.text_input(
                 "Título de la leyenda",
                 "" if color == "Ninguna" else color,
                 key="hist_legend_title",
+                help="Nombre que aparecerá sobre la leyenda del gráfico.",
             )
             style_config["legend_title"] = legend_title
             axis_ranges = axis_range_controls(
@@ -945,21 +953,22 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             if not categorical_vars:
                 st.info("No hay variables categóricas seleccionadas.")
                 return
-            x = st.selectbox("Variable de conteo/principal", categorical_vars)
+            x = st.selectbox("Variable de conteo/principal", categorical_vars, help="Variable cuyas categorías se verán en el eje principal.")
             color_options = [c for c in categorical_vars if c != x]
-            color = st.selectbox("Variable para desagregar/color", ["Ninguna"] + color_options)
+            color = st.selectbox("Variable para desagregar/color", ["Ninguna"] + color_options, help="Variable opcional para separar las barras por color.")
             facet_options = [
                 c
                 for c in categorical_vars
                 if c not in {x, None if color == "Ninguna" else color}
             ]
-            facet = st.selectbox("Tercera variable / panel", ["Ninguna"] + facet_options)
+            facet = st.selectbox("Tercera variable / panel", ["Ninguna"] + facet_options, help="Crea paneles adicionales para una tercera variable categórica.")
             barmode = st.segmented_control(
                 "Modo de barras",
                 ["Apiladas", "Agrupadas"],
                 default="Apiladas",
+                help="Define si las barras se muestran apiladas o una al lado de la otra.",
             )
-            percent = st.toggle("Mostrar porcentajes", value=False)
+            percent = st.toggle("Mostrar porcentajes", value=False, help="Si se activa, el eje Y se expresa en porcentaje en lugar de frecuencia.")
             percent_denominator = "total"
             if percent:
                 denominator_options = {"Total general": "total", f"Total por {x}": "x"}
@@ -970,9 +979,10 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 denominator_label = st.selectbox(
                     "Calcular porcentaje sobre",
                     list(denominator_options.keys()),
+                    help="Elige sobre qué total se calcularán los porcentajes mostrados en las barras.",
                 )
                 percent_denominator = denominator_options[denominator_label]
-            show_labels = st.toggle("Mostrar etiquetas en barras", value=True)
+            show_labels = st.toggle("Mostrar etiquetas en barras", value=True, help="Muestra el valor o porcentaje directamente sobre cada barra.")
             label_decimals = 2
             if show_labels:
                 label_decimals = st.number_input(
@@ -981,16 +991,18 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                     max_value=6,
                     value=2,
                     step=1,
+                    help="Cantidad máxima de decimales mostrados en las etiquetas.",
                 )
             orientation = st.segmented_control("Orientación", ["Vertical", "Horizontal"], default="Vertical")
             title = chart_title_controls(f"Barras de {x}", "bar")
             style_config.update(st.session_state["bar_title_options"])
-            x_label = st.text_input("Eje X", x)
-            y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia")
+            x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
+            y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia", help="Texto visible del eje vertical.")
             legend_title = st.text_input(
                 "Título de la leyenda",
                 "" if color == "Ninguna" else color,
                 key="bar_legend_title",
+                help="Nombre que aparecerá sobre la leyenda del gráfico.",
             )
             style_config["legend_title"] = legend_title
             axis_ranges = axis_range_controls(
@@ -1023,17 +1035,18 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             if len(continuous_vars) < 2:
                 st.info("Selecciona al menos dos variables continuas.")
                 return
-            x = st.selectbox("Variable X", continuous_vars)
-            y = st.selectbox("Variable Y", [c for c in continuous_vars if c != x])
-            color = st.selectbox("Color", ["Ninguna"] + categorical_vars)
+            x = st.selectbox("Variable X", continuous_vars, help="Variable numérica que se mostrará en el eje horizontal.")
+            y = st.selectbox("Variable Y", [c for c in continuous_vars if c != x], help="Variable numérica que se mostrará en el eje vertical.")
+            color = st.selectbox("Color", ["Ninguna"] + categorical_vars, help="Variable opcional para diferenciar puntos por grupo.")
             title = chart_title_controls(f"{y} vs {x}", "scatter")
             style_config.update(st.session_state["scatter_title_options"])
-            x_label = st.text_input("Eje X", x)
-            y_label = st.text_input("Eje Y", y)
+            x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
+            y_label = st.text_input("Eje Y", y, help="Texto visible del eje vertical.")
             legend_title = st.text_input(
                 "Título de la leyenda",
                 "" if color == "Ninguna" else color,
                 key="scatter_legend_title",
+                help="Nombre que aparecerá sobre la leyenda del gráfico.",
             )
             style_config["legend_title"] = legend_title
             axis_ranges = axis_range_controls(

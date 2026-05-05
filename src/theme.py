@@ -263,6 +263,99 @@ def get_institutional_css() -> str:
             opacity: 1 !important;
         }}
 
+        [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
+        [data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
+        [data-testid="stSidebar"] [data-testid="stRadio"] label,
+        [data-testid="stSidebar"] [data-testid="stRadio"] label *,
+        [data-testid="stSidebar"] [data-testid="stCheckbox"] label,
+        [data-testid="stSidebar"] [data-testid="stCheckbox"] label *,
+        [data-testid="stSidebar"] [data-testid="stToggle"] label,
+        [data-testid="stSidebar"] [data-testid="stToggle"] label *,
+        [data-testid="stSidebar"] [data-testid="stSlider"] label,
+        [data-testid="stSidebar"] [data-testid="stSlider"] label * {{
+            color: var(--text) !important;
+            opacity: 1 !important;
+        }}
+
+        [data-testid="stWidgetLabel"] {{
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 0.4rem !important;
+            width: fit-content !important;
+            max-width: 100% !important;
+        }}
+
+        [data-testid="stWidgetLabel"] > div {{
+            width: auto !important;
+            flex: 0 1 auto !important;
+        }}
+
+        [data-testid="stWidgetLabel"] button {{
+            margin-left: 0 !important;
+            width: 1.6rem !important;
+            height: 1.6rem !important;
+            min-width: 1.6rem !important;
+            padding: 0 !important;
+            border-radius: 999px !important;
+            border: 1px solid var(--stroke-strong) !important;
+            background: var(--panel) !important;
+            color: transparent !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 0 !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }}
+
+        [data-testid="stWidgetLabel"] button::after {{
+            content: "?" !important;
+            color: var(--accent) !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 0.92rem !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+            position: absolute !important;
+            inset: 0 !important;
+        }}
+
+        [data-testid="stWidgetLabel"] button:hover,
+        [data-testid="stWidgetLabel"] button:focus-visible {{
+            border-color: var(--accent-3) !important;
+            background: rgba(25, 85, 166, 0.08) !important;
+        }}
+
+        [data-testid="stWidgetLabel"] button:hover::after,
+        [data-testid="stWidgetLabel"] button:focus-visible::after {{
+            color: var(--accent-3) !important;
+        }}
+
+        [data-testid="stWidgetLabel"] button svg,
+        [data-testid="stWidgetLabel"] button img,
+        [data-testid="stWidgetLabel"] button path {{
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }}
+
+        [data-testid="stWidgetLabel"] button > span,
+        [data-testid="stWidgetLabel"] button > div,
+        [data-testid="stWidgetLabel"] button * {{
+            color: transparent !important;
+            fill: transparent !important;
+            stroke: transparent !important;
+            text-shadow: none !important;
+        }}
+
         [data-testid="stMain"] [data-baseweb="radio"] div,
         [data-testid="stMain"] [data-baseweb="radio"] span,
         [data-testid="stMain"] [data-baseweb="checkbox"] div,
