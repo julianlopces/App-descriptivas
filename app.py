@@ -1150,16 +1150,33 @@ def preview_tab(df: pd.DataFrame) -> None:
 def instructions_tab() -> None:
     panel_start(
         "Instrucciones de uso",
-        "Guía rápida de lo que puedes hacer en cada módulo de la app.",
+        "Gu?a r?pida de lo que puedes hacer en cada m?dulo de la app.",
     )
     st.markdown(
         """
-        <div class="note-card">
+        <div
+            style="
+                background:#F4D2A4;
+                border:1px solid #F4B21B;
+                border-radius:8px;
+                color:#000031;
+                font-size:0.88rem;
+                margin-top:0.8rem;
+                padding:0.85rem 1rem;
+            "
+        >
             Sugerencia de flujo: carga la base en el panel izquierdo, revisa la clasificaci&oacute;n de variables y
             luego entra al m&oacute;dulo que necesites para explorar, tabular o exportar resultados.
         </div>
-        <div class="instruction-grid">
-            <div class="instruction-card">
+        <div
+            style="
+                display:grid;
+                grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+                gap:0.9rem;
+                margin-top:0.9rem;
+            "
+        >
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
                 <h4>Carga y clasificaci&oacute;n</h4>
                 <p>Desde el panel izquierdo subes la base y confirmas qu&eacute; variables son continuas o categ&oacute;ricas.</p>
                 <ul>
@@ -1168,7 +1185,7 @@ def instructions_tab() -> None:
                     <li>Ajusta manualmente la clasificaci&oacute;n de variables.</li>
                 </ul>
             </div>
-            <div class="instruction-card">
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
                 <h4>Vista previa</h4>
                 <p>Sirve para revisar r&aacute;pidamente las primeras filas del dataset antes de seguir con el an&aacute;lisis.</p>
                 <ul>
@@ -1177,7 +1194,7 @@ def instructions_tab() -> None:
                     <li>Confirma nombres de columnas y estructura general del archivo.</li>
                 </ul>
             </div>
-            <div class="instruction-card">
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
                 <h4>Gr&aacute;ficos</h4>
                 <p>Construye visualizaciones personalizadas para an&aacute;lisis e informes.</p>
                 <ul>
@@ -1186,7 +1203,7 @@ def instructions_tab() -> None:
                     <li>Exporta el gr&aacute;fico como PNG cuando est&eacute; disponible.</li>
                 </ul>
             </div>
-            <div class="instruction-card">
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
                 <h4>Tablas cruzadas</h4>
                 <p>Produce tablas masivas entre variables principales y desagregaciones sociodemogr&aacute;ficas.</p>
                 <ul>
@@ -1195,7 +1212,7 @@ def instructions_tab() -> None:
                     <li>Descarga un Excel con una hoja por variable principal.</li>
                 </ul>
             </div>
-            <div class="instruction-card">
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
                 <h4>Continuas</h4>
                 <p>Resume variables num&eacute;ricas con estad&iacute;sticos descriptivos listos para reporte.</p>
                 <ul>
@@ -1204,7 +1221,7 @@ def instructions_tab() -> None:
                     <li>Descarga la tabla en CSV o XLSX.</li>
                 </ul>
             </div>
-            <div class="instruction-card">
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
                 <h4>Categ&oacute;ricas</h4>
                 <p>Revisa frecuencias, porcentajes y valores perdidos por categor&iacute;a.</p>
                 <ul>
