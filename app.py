@@ -645,8 +645,8 @@ def render_empty_state() -> None:
         <div class="panel">
             <div class="panel-title">Carga una base para comenzar</div>
             <div class="panel-subtitle">
-                Usa el panel izquierdo para subir un CSV, XLSX o XLS. Luego podrás clasificar variables,
-                clasificar variables y generar tablas o gráficos desde los módulos horizontales.
+                Usa el panel izquierdo para subir un CSV, XLSX o XLS. Luego podrás clasificar variables
+                y generar tablas o gráficos desde los módulos horizontales.
             </div>
             <div class="note-card">
                 El flujo queda organizado como un tablero: dataset y variables a la izquierda;
