@@ -1150,7 +1150,7 @@ def preview_tab(df: pd.DataFrame) -> None:
 def instructions_tab() -> None:
     panel_start(
         "Instrucciones de uso",
-        "Gu?a r?pida de lo que puedes hacer en cada m?dulo de la app.",
+        "Gu\u00eda r\u00e1pida de lo que puedes hacer en cada m\u00f3dulo de la app.",
     )
     st.markdown(
         """
