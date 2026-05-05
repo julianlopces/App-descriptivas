@@ -916,11 +916,10 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             x = st.selectbox("Variable continua", continuous_vars, help="Variable numérica que se distribuirá en el histograma.")
             color = st.selectbox("Agrupación/color", ["Ninguna"] + categorical_vars)
             bins = st.slider("Bins", 5, 100, 30, help="Cantidad de intervalos usados para agrupar los datos.")
-            percent = st.toggle("Mostrar porcentajes", value=False, help="Si se activa, las barras se expresan en porcentaje en vez de frecuencia.")
             title = chart_title_controls(f"Histograma de {x}", "hist")
             style_config.update(st.session_state["hist_title_options"])
             x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
-            y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia", help="Texto visible del eje vertical.")
+            y_label = st.text_input("Eje Y", "Frecuencia", help="Texto visible del eje vertical.")
             legend_title = st.text_input(
                 "Título de la leyenda",
                 "" if color == "Ninguna" else color,
@@ -946,7 +945,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 bins=bins,
                 width=900,
                 height=520,
-                percent=percent,
+                percent=False,
             )
 
         elif chart_type == "Barras":
