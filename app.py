@@ -7,11 +7,16 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from src.crosstabs import (
+    TABLE_TYPE_LABELS,
+    build_crosstab_excel,
+    compute_crosstab,
+    format_crosstab_for_display,
+)
 from src.data_loader import get_excel_sheets, load_uploaded_file, normalize_columns
 from src.descriptive_stats import (
     categorical_summary,
     continuous_summary,
-    contingency_table,
     detect_variable_types,
 )
 from src.palettes import (
@@ -772,6 +777,111 @@ def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFra
     return table
 
 
+def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFrame:
+    panel_start(
+        "Tablas cruzadas por desagregaciones",
+        "Las variables principales se muestran como columnas y las variables de desagregación como filas. "
+        "Por defecto se excluyen los valores perdidos.",
+    )
+    if len(categorical_vars) < 2:
+        st.info("Selecciona al menos dos variables categóricas para generar tablas cruzadas.")
+        panel_end()
+        return pd.DataFrame()
+
+    controls, output = st.columns([0.38, 0.62], gap="large")
+    with controls:
+        st.markdown('<div class="side-heading">Configuración</div>', unsafe_allow_html=True)
+        main_vars = st.multiselect(
+            "Variables principales",
+            categorical_vars,
+            key="cross_main_vars",
+            help="Estas variables se usarán como columnas en todas las tablas.",
+        )
+        disaggregation_vars = st.multiselect(
+            "Variables de desagregación sociodemográfica",
+            categorical_vars,
+            key="cross_disagg_vars",
+            help="Estas variables se usarán como filas en todas las tablas.",
+        )
+        table_type_label = st.selectbox(
+            "Tipo de tabla",
+            list(TABLE_TYPE_LABELS.values()),
+            key="cross_table_type",
+        )
+        st.caption(
+            "El Excel tendrá una hoja por variable principal y dentro de cada hoja aparecerán todas "
+            "las desagregaciones seleccionadas."
+        )
+
+    reverse_type_labels = {label: key for key, label in TABLE_TYPE_LABELS.items()}
+    table_type = reverse_type_labels[table_type_label]
+    shared_vars = sorted(set(main_vars).intersection(disaggregation_vars))
+    valid_pairs = [
+        (main_var, disagg_var)
+        for main_var in main_vars
+        for disagg_var in disaggregation_vars
+        if main_var != disagg_var
+    ]
+
+    with output:
+        if not main_vars:
+            st.warning("Selecciona al menos una variable principal.")
+            panel_end()
+            return pd.DataFrame()
+        if not disaggregation_vars:
+            st.warning("Selecciona al menos una variable de desagregación.")
+            panel_end()
+            return pd.DataFrame()
+        if shared_vars:
+            st.warning(
+                "Las variables repetidas en ambos grupos se omitirán cuando coincidan: "
+                + ", ".join(shared_vars)
+            )
+        if not valid_pairs:
+            st.warning("No hay combinaciones válidas para generar tablas cruzadas.")
+            panel_end()
+            return pd.DataFrame()
+
+        preview_main = ""
+        preview_disagg = ""
+        preview_table = pd.DataFrame()
+        for candidate_main, candidate_disagg in valid_pairs:
+            candidate_table = compute_crosstab(df, candidate_disagg, candidate_main, table_type)
+            if not candidate_table.empty:
+                preview_main = candidate_main
+                preview_disagg = candidate_disagg
+                preview_table = candidate_table
+                break
+
+        if preview_table.empty:
+            st.info("No hay datos válidos para las combinaciones seleccionadas.")
+            panel_end()
+            return pd.DataFrame()
+
+        panel_start(
+            f"Vista previa: {preview_main} x {preview_disagg}",
+            f"{table_type_label}. Se muestra la primera combinación; el Excel incluirá todas.",
+        )
+        render_styled_table(
+            format_crosstab_for_display(preview_table, table_type),
+            height=430,
+            key_prefix="cross_preview",
+        )
+        excel_buffer = build_crosstab_excel(df, main_vars, disaggregation_vars, table_type)
+        st.download_button(
+            "Descargar Excel",
+            excel_buffer.getvalue(),
+            "tablas_cruzadas_desagregadas.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            key="cross_download_excel",
+        )
+        panel_end()
+
+    panel_end()
+    return preview_table.reset_index()
+
+
 def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: list[str]) -> None:
     controls, output = st.columns([0.32, 0.68], gap="large")
     fig = None
@@ -1058,9 +1168,9 @@ def main() -> None:
     with tab_graphs:
         charts_tab(df, selected_continuous, selected_categorical)
     with tab_cross:
-        cross = contingency_tab(df, selected_categorical)
+        cross = mass_crosstab_tab(df, selected_categorical)
         if not cross.empty:
-            tables["tabla_cruzada"] = cross.reset_index()
+            tables["tabla_cruzada"] = cross
     with tab_cont:
         tables["continuas"] = continuous_tab(df, selected_continuous)
     with tab_cat:
