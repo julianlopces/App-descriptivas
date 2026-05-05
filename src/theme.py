@@ -448,30 +448,44 @@ def get_institutional_css() -> str:
             font-size: 0.86rem;
         }}
 
+        .metric-grid {{
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.85rem;
+            margin: 0.35rem 0 1rem;
+        }}
+
         .metric-card {{
             min-height: 112px;
             padding: 1rem;
+            background: linear-gradient(180deg, var(--accent), var(--accent-3));
+            border-color: var(--accent) !important;
+            box-shadow: 0 12px 24px rgba(2, 15, 80, 0.18);
         }}
 
         .metric-card small {{
-            color: var(--muted);
+            color: var(--text-inverse);
             display: block;
             font-weight: 800;
             margin-bottom: 0.35rem;
+            opacity: 0.96;
         }}
 
         .metric-card strong {{
-            color: var(--text-strong);
+            color: var(--text-inverse);
             display: block;
             font-size: 2rem;
             line-height: 1;
+            font-weight: 800;
         }}
 
         .metric-card span {{
-            color: var(--muted);
+            color: var(--text-inverse);
             display: block;
             font-size: 0.85rem;
             margin-top: 0.35rem;
+            font-weight: 700;
+            opacity: 0.92;
         }}
 
         .panel {{

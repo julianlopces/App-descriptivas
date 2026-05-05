@@ -283,11 +283,23 @@ def variable_controls(df: pd.DataFrame) -> tuple[list[str], list[str]]:
 
 
 def metric_html(label: str, value: str, detail: str) -> str:
+    colors = INSTITUTIONAL_COLORS
     return f"""
-    <div class="metric-card">
-        <small>{escape(label)}</small>
-        <strong>{escape(value)}</strong>
-        <span>{escape(detail)}</span>
+    <div
+        class="metric-card"
+        style="
+            min-height: 112px;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid {colors["primary"]};
+            background: linear-gradient(180deg, {colors["primary"]}, {colors["secondary_blue"]});
+            box-shadow: 0 12px 24px rgba(2, 15, 80, 0.18);
+            color: {colors["white"]};
+        "
+    >
+        <small style="display:block; color:{colors['white']}; font-weight:800; margin-bottom:0.35rem; opacity:0.96;">{escape(label)}</small>
+        <strong style="display:block; color:{colors['white']}; font-size:2rem; line-height:1; font-weight:800;">{escape(value)}</strong>
+        <span style="display:block; color:{colors['white']}; font-size:0.85rem; margin-top:0.35rem; font-weight:700; opacity:0.92;">{escape(detail)}</span>
     </div>
     """
 
@@ -296,7 +308,16 @@ def overview_metrics(df: pd.DataFrame, continuous_vars: list[str], categorical_v
     missing = int(df.isna().sum().sum())
     complete_rows = int(df.dropna().shape[0])
     html = f"""
-    <div class="metric-grid">
+    <div
+        class="metric-grid"
+        style="
+            display:grid;
+            grid-template-columns:repeat(4, minmax(0, 1fr));
+            gap:0.85rem;
+            margin:0.35rem 0 1rem;
+            align-items:stretch;
+        "
+    >
         {metric_html("N total", f"{df.shape[0]:,}", "casos válidos en la base")}
         {metric_html("Variables", f"{df.shape[1]:,}", f"{len(continuous_vars)} cont. - {len(categorical_vars)} cat.")}
         {metric_html("Perdidos", f"{missing:,}", "celdas sin dato")}
