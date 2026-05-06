@@ -433,6 +433,7 @@ def scatter_plot(
         fig.update_traces(
             selector=lambda trace: getattr(trace, "mode", "") == "lines",
             line={"color": trendline_color, "width": 2.5},
+            opacity=1,
         )
     elif show_trendline and trendline_scope == "trace":
         marker_colors_by_group: dict[str, str] = {}
@@ -448,7 +449,7 @@ def scatter_plot(
                 group = str(getattr(trace, "legendgroup", "") or getattr(trace, "name", ""))
                 line_color = marker_colors_by_group.get(group)
                 if line_color:
-                    trace.update(line={"color": line_color, "width": 2.5})
+                    trace.update(line={"color": line_color, "width": 2.5}, opacity=1)
     fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
     return fig
 

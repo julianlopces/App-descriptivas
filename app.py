@@ -1054,36 +1054,36 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             y = st.selectbox("Variable Y", [c for c in continuous_vars if c != x], help="Variable numérica que se mostrará en el eje vertical.")
             color = st.selectbox("Color", ["Ninguna"] + categorical_vars, help="Variable opcional para diferenciar puntos por grupo.")
             show_trendline = st.toggle(
-                "Mostrar l?nea de ajuste",
+                "Mostrar línea de ajuste",
                 value=False,
-                help="Agrega una l?nea de ajuste para resumir la relaci?n entre X e Y.",
+                help="Agrega una línea de ajuste para resumir la relación entre X e Y.",
             )
             trendline_method = "OLS"
             trendline_scope = "overall"
             trendline_color = "#F7966B"
             if show_trendline:
                 trendline_method = st.selectbox(
-                    "M?todo de ajuste",
+                    "Método de ajuste",
                     ["OLS"],
                     index=0,
-                    help="M?todo estad?stico usado para calcular la l?nea de ajuste.",
+                    help="Método estadístico usado para calcular la línea de ajuste.",
                 )
                 if color != "Ninguna":
                     trendline_scope_label = st.selectbox(
-                        "C?lculo de la l?nea de ajuste",
+                        "Cálculo de la línea de ajuste",
                         ["General", "Por subgrupos"],
                         index=0,
-                        help="Elige si la l?nea de ajuste se calcula para todos los puntos o por cada grupo de color.",
+                        help="Elige si la línea de ajuste se calcula para todos los puntos o por cada grupo de color.",
                     )
                     trendline_scope = "overall" if trendline_scope_label == "General" else "trace"
                 if color == "Ninguna" or trendline_scope == "overall":
                     trendline_color = st.color_picker(
-                        "Color de la l?nea de ajuste",
+                        "Color de la línea de ajuste",
                         value="#F7966B",
-                        help="Color aplicado a la l?nea de ajuste general.",
+                        help="Color aplicado a la línea de ajuste general.",
                     )
                 else:
-                    st.caption("Las l?neas de ajuste por subgrupos usar?n autom?ticamente el mismo color que sus puntos.")
+                    st.caption("Las líneas de ajuste por subgrupos usarán automáticamente el mismo color que sus puntos.")
             title = chart_title_controls(f"{y} vs {x}", "scatter")
             style_config.update(st.session_state["scatter_title_options"])
             x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
