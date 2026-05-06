@@ -400,6 +400,10 @@ def scatter_plot(
     y: str,
     color: str | None,
     color_sequence: list[str] | None,
+    show_trendline: bool,
+    trendline_method: str,
+    trendline_scope: str,
+    trendline_color: str,
     title: str,
     x_label: str,
     y_label: str,
@@ -417,11 +421,19 @@ def scatter_plot(
         y=y,
         color=color,
         color_discrete_sequence=color_sequence,
+        trendline=trendline_method.lower() if show_trendline else None,
+        trendline_color_override=(trendline_color if show_trendline and trendline_scope == "overall" else None),
+        trendline_scope=trendline_scope if show_trendline else "trace",
         title=title,
         width=width,
         height=height,
         opacity=0.75,
     )
+    if show_trendline and trendline_scope == "overall":
+        fig.update_traces(
+            selector=lambda trace: getattr(trace, "mode", "") == "lines",
+            line={"color": trendline_color, "width": 2.5},
+        )
     fig.update_layout(xaxis_title=x_label, yaxis_title=y_label)
     return fig
 

@@ -496,13 +496,24 @@ def style_figure(fig, style: dict[str, object]) -> None:
 
 
 def chart_title_controls(default_title: str, key_prefix: str) -> str:
-    title = st.text_input("Título", default_title, key=f"{key_prefix}_title")
-    show_title = st.toggle("Mostrar título", value=True, key=f"{key_prefix}_show_title")
+    title = st.text_input(
+        "Título",
+        default_title,
+        key=f"{key_prefix}_title",
+        help="Texto principal que aparecerá en la parte superior del gráfico.",
+    )
+    show_title = st.toggle(
+        "Mostrar título",
+        value=True,
+        key=f"{key_prefix}_show_title",
+        help="Activa o desactiva la visibilidad del título en el gráfico.",
+    )
     title_alignment = st.segmented_control(
         "Alineación del título",
         ["Izquierda", "Centro", "Derecha"],
         default="Centro",
         key=f"{key_prefix}_title_alignment",
+        help="Define en qué parte superior del gráfico se ubicará el título.",
     )
     st.session_state[f"{key_prefix}_title_options"] = {
         "show_title": show_title,
@@ -992,7 +1003,12 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                     step=1,
                     help="Cantidad máxima de decimales mostrados en las etiquetas.",
                 )
-            orientation = st.segmented_control("Orientación", ["Vertical", "Horizontal"], default="Vertical")
+            orientation = st.segmented_control(
+                "Orientación",
+                ["Vertical", "Horizontal"],
+                default="Vertical",
+                help="Define si las barras se muestran de abajo hacia arriba o de izquierda a derecha.",
+            )
             title = chart_title_controls(f"Barras de {x}", "bar")
             style_config.update(st.session_state["bar_title_options"])
             x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
@@ -1037,6 +1053,37 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             x = st.selectbox("Variable X", continuous_vars, help="Variable numérica que se mostrará en el eje horizontal.")
             y = st.selectbox("Variable Y", [c for c in continuous_vars if c != x], help="Variable numérica que se mostrará en el eje vertical.")
             color = st.selectbox("Color", ["Ninguna"] + categorical_vars, help="Variable opcional para diferenciar puntos por grupo.")
+            show_trendline = st.toggle(
+                "Mostrar l?nea de ajuste",
+                value=False,
+                help="Agrega una l?nea de ajuste para resumir la relaci?n entre X e Y.",
+            )
+            trendline_method = "OLS"
+            trendline_scope = "overall"
+            trendline_color = "#F7966B"
+            if show_trendline:
+                trendline_method = st.selectbox(
+                    "M?todo de ajuste",
+                    ["OLS"],
+                    index=0,
+                    help="M?todo estad?stico usado para calcular la l?nea de ajuste.",
+                )
+                if color != "Ninguna":
+                    trendline_scope_label = st.selectbox(
+                        "C?lculo de la l?nea de ajuste",
+                        ["General", "Por subgrupos"],
+                        index=0,
+                        help="Elige si la l?nea de ajuste se calcula para todos los puntos o por cada grupo de color.",
+                    )
+                    trendline_scope = "overall" if trendline_scope_label == "General" else "trace"
+                if color == "Ninguna" or trendline_scope == "overall":
+                    trendline_color = st.color_picker(
+                        "Color de la l?nea de ajuste",
+                        value="#F7966B",
+                        help="Color aplicado a la l?nea de ajuste general.",
+                    )
+                else:
+                    st.caption("Las l?neas de ajuste por subgrupos usar?n autom?ticamente el mismo color que sus puntos.")
             title = chart_title_controls(f"{y} vs {x}", "scatter")
             style_config.update(st.session_state["scatter_title_options"])
             x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
@@ -1061,6 +1108,10 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 y=y,
                 color=None if color == "Ninguna" else color,
                 color_sequence=style_config["palette"],
+                show_trendline=show_trendline,
+                trendline_method=trendline_method,
+                trendline_scope=trendline_scope,
+                trendline_color=trendline_color,
                 title=title,
                 x_label=x_label,
                 y_label=y_label,
