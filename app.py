@@ -310,14 +310,12 @@ def metric_html(label: str, value: str, detail: str) -> str:
 
 
 def overview_metrics(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: list[str]) -> None:
-    missing = int(df.isna().sum().sum())
-    complete_rows = int(df.dropna().shape[0])
     html = f"""
     <div
         class="metric-grid"
         style="
             display:grid;
-            grid-template-columns:repeat(4, minmax(0, 1fr));
+            grid-template-columns:repeat(2, minmax(0, 1fr));
             gap:0.85rem;
             margin:0.35rem 0 1rem;
             align-items:stretch;
@@ -325,8 +323,6 @@ def overview_metrics(df: pd.DataFrame, continuous_vars: list[str], categorical_v
     >
         {metric_html("N total", f"{df.shape[0]:,}", "casos válidos en la base")}
         {metric_html("Variables", f"{df.shape[1]:,}", f"{len(continuous_vars)} cont. - {len(categorical_vars)} cat.")}
-        {metric_html("Perdidos", f"{missing:,}", "celdas sin dato")}
-        {metric_html("Filas completas", f"{complete_rows:,}", "sin valores perdidos")}
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
