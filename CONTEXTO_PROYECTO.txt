@@ -1,0 +1,112 @@
+Proyecto: App descriptivas
+
+Este proyecto es una aplicación en Python construida con Streamlit para cargar bases de datos tabulares y generar análisis descriptivos, tablas cruzadas y visualizaciones exploratorias personalizables. El proyecto usa uv como gestor de dependencias y entorno.
+
+Objetivo general
+
+La app está pensada para usuarios que necesitan explorar bases en formato CSV, XLSX o XLS, clasificar variables, resumir resultados y exportar productos listos para informes. La interfaz está organizada como un dashboard modular con enfoque institucional, usando colores y branding de Equilibrium.
+
+Qué hace actualmente la app
+
+- Permite cargar archivos CSV, XLSX y XLS.
+- Permite elegir la hoja cuando el archivo es Excel.
+- Normaliza nombres de columnas y elimina columnas completamente vacías.
+- Detecta automáticamente variables continuas y categóricas.
+- Permite ajustar manualmente la clasificación de variables.
+- Muestra una vista previa de la base cargada.
+- Resume métricas generales del dataset.
+- Genera estadísticas descriptivas para variables continuas.
+- Genera estadísticas descriptivas para variables categóricas.
+- Genera gráficos de barras, histogramas y gráficos de dispersión.
+- Permite personalizar títulos, ejes, fuentes, paletas, fondos, grilla y rangos de ejes.
+- Permite añadir línea de ajuste OLS en gráficos de dispersión, ya sea general o por subgrupos.
+- Exporta tablas a CSV y Excel.
+- Exporta gráficos a PNG.
+- Genera tablas cruzadas masivas y las exporta a Excel, con una hoja por variable principal.
+- Incluye un módulo de instrucciones de uso dentro de la app.
+
+Estructura funcional de la interfaz
+
+La app está organizada en módulos principales:
+
+- Instrucciones:
+  Explica de forma visual para qué sirve cada módulo de la aplicación y sugiere un flujo de trabajo recomendado.
+
+- Vista previa:
+  Permite inspeccionar rápidamente las primeras filas del dataset y revisar su estructura básica antes del análisis.
+
+- Gráficos:
+  Permite construir visualizaciones personalizadas a partir de variables continuas y categóricas. Incluye barras, histogramas y dispersión, con múltiples controles de estilo y exportación PNG.
+
+- Tablas cruzadas:
+  Permite seleccionar varias variables principales y varias variables de desagregación para construir tablas cruzadas masivas. Genera un archivo Excel donde cada hoja corresponde a una variable principal y contiene, una debajo de otra, todas sus tablas cruzadas contra las variables de desagregación.
+
+- Continuas:
+  Muestra estadísticas descriptivas para variables numéricas, incluyendo conteo de válidos, perdidos, media, mediana, desviación estándar, mínimo, máximo y percentiles.
+
+- Categóricas:
+  Muestra frecuencias, porcentajes y valores perdidos por categoría, con control del número máximo de categorías visibles.
+
+Descripción de componentes del repositorio
+
+- app.py
+  Es el archivo principal de Streamlit. Orquesta la aplicación, maneja estado de sesión, layout, navegación por pestañas, renderizado de tablas, controles de personalización y conexión entre la interfaz y los módulos de lógica.
+
+- main.py
+  Es un archivo mínimo que solo muestra cómo ejecutar la app con Streamlit.
+
+- src/data_loader.py
+  Se encarga de leer archivos subidos, detectar hojas de Excel, cargar CSV/XLS/XLSX y normalizar columnas.
+
+- src/descriptive_stats.py
+  Contiene la lógica de detección de tipos de variable y cálculo de estadísticas descriptivas continuas y categóricas.
+
+- src/crosstabs.py
+  Contiene la lógica de tablas cruzadas masivas, formateo de resultados y construcción del Excel exportable por hojas.
+
+- src/plots.py
+  Construye los gráficos de Plotly y gestiona la exportación de imágenes PNG, incluyendo la configuración del navegador usado para el render estático.
+
+- src/palettes.py
+  Centraliza las paletas de colores para gráficos, incluyendo las variantes institucionales Paleta Equi.
+
+- src/theme.py
+  Centraliza los colores institucionales de la interfaz, la lógica de contraste y el CSS personalizado del tema visual.
+
+- src/utils.py
+  Incluye utilidades para convertir dataframes y colecciones de tablas a CSV o Excel descargable.
+
+- media/
+  Contiene logos institucionales usados en la interfaz.
+
+- .streamlit/config.toml
+  Define la configuración base de tema de Streamlit.
+
+- pyproject.toml
+  Declara el proyecto y sus dependencias administradas con uv.
+
+- uv.lock
+  Fija las versiones exactas de dependencias para instalaciones reproducibles.
+
+- packages.txt
+  Declara paquetes del sistema usados en despliegue, como Chromium para exportación de PNG en Streamlit Cloud.
+
+Estado actual del proyecto
+
+- El repositorio está alojado en GitHub.
+- La app está desplegada en Streamlit Community Cloud.
+- La rama principal es main.
+- La app ya tiene una identidad visual institucional basada en la paleta Equilibrium.
+
+Consideraciones de evolución
+
+Si se extiende el proyecto, conviene mantener esta separación:
+
+- interfaz y flujo de usuario en app.py
+- lógica de datos y estadísticas en src/descriptive_stats.py
+- lógica de tablas cruzadas en src/crosstabs.py
+- lógica de gráficos en src/plots.py
+- configuración visual en src/theme.py y src/palettes.py
+- exportaciones reutilizables en src/utils.py
+
+Este contexto debe servir como prompt base para cualquier nueva mejora del proyecto, procurando no romper la estructura modular existente ni la experiencia visual ya construida.
