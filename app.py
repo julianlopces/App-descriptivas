@@ -322,7 +322,7 @@ def overview_metrics(df: pd.DataFrame, continuous_vars: list[str], categorical_v
         "
     >
         {metric_html("N total", f"{df.shape[0]:,}", "casos válidos en la base")}
-        {metric_html("Variables", f"{df.shape[1]:,}", f"{len(continuous_vars)} cont. - {len(categorical_vars)} cat.")}
+        {metric_html("Variables", f"{df.shape[1]:,}", f"{len(continuous_vars)} continuas - {len(categorical_vars)} categóricas")}
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
