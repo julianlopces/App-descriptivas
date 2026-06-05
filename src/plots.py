@@ -277,6 +277,13 @@ def _clean_for_plot(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     return plotted
 
 
+def _format_label_value(value: float, decimals: int, suffix: str = "") -> str:
+    formatted = f"{value:.{decimals}f}"
+    if decimals > 0:
+        formatted = formatted.rstrip("0").rstrip(".")
+    return f"{formatted}{suffix}"
+
+
 def histogram(
     df: pd.DataFrame,
     *,
@@ -348,7 +355,7 @@ def bar_chart(
     value_col = "porcentaje" if percent else "frecuencia"
     label_col = f"{value_col}_etiqueta"
     suffix = "%" if percent else ""
-    counts[label_col] = counts[value_col].map(lambda value: f"{value:.{label_decimals}f}{suffix}")
+    counts[label_col] = counts[value_col].map(lambda value: _format_label_value(value, label_decimals, suffix))
 
     if orientation == "h":
         fig = px.bar(
