@@ -4,7 +4,6 @@ from io import BytesIO
 from typing import Any
 
 import pandas as pd
-from pandas.api.types import is_numeric_dtype
 
 
 def _read_bytes(uploaded_file: Any) -> bytes:
@@ -109,7 +108,7 @@ def apply_custom_missing_values(df: pd.DataFrame, missing_values: list[str]) -> 
     for column in cleaned.columns:
         series = cleaned[column]
         string_mask = series.astype("string").str.strip().isin(normalized_missing).fillna(False)
-        if is_numeric_dtype(series) and numeric_missing:
+        if pd.api.types.is_numeric_dtype(series) and numeric_missing:
             numeric_mask = pd.to_numeric(series, errors="coerce").isin(numeric_missing).fillna(False)
             mask = string_mask | numeric_mask
         else:

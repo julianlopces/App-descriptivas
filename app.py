@@ -15,11 +15,9 @@ from src.crosstabs import (
     iter_crosstab_tables,
 )
 from src.data_loader import (
-    apply_custom_missing_values,
     get_excel_sheets,
     load_uploaded_file,
     normalize_columns,
-    parse_custom_missing_values,
 )
 from src.descriptive_stats import (
     categorical_summary,
@@ -182,6 +180,49 @@ def init_state() -> None:
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
+
+
+def parse_custom_missing_values(raw_values: str) -> list[str]:
+    separators = [",", ";", "\n", "\t"]
+    normalized = raw_values
+    for separator in separators:
+        normalized = normalized.replace(separator, "\n")
+    values = []
+    for value in normalized.splitlines():
+        cleaned = value.strip()
+        if cleaned:
+            values.append(cleaned)
+    return list(dict.fromkeys(values))
+
+
+def apply_custom_missing_values(df: pd.DataFrame, missing_values: list[str]) -> pd.DataFrame:
+    if df.empty or not missing_values:
+        return df.copy()
+
+    cleaned = df.copy()
+    normalized_missing = {value.strip() for value in missing_values if value.strip()}
+    numeric_missing: set[float] = set()
+    for value in normalized_missing:
+        numeric_candidate = value.replace(",", ".")
+        if len(numeric_candidate) > 1 and numeric_candidate.startswith("0") and not numeric_candidate.startswith("0."):
+            continue
+        try:
+            numeric_missing.add(float(numeric_candidate))
+        except ValueError:
+            continue
+
+    for column in cleaned.columns:
+        series = cleaned[column]
+        string_mask = series.astype("string").str.strip().isin(normalized_missing).fillna(False)
+        if pd.api.types.is_numeric_dtype(series) and numeric_missing:
+            numeric_mask = pd.to_numeric(series, errors="coerce").isin(numeric_missing).fillna(False)
+            mask = string_mask | numeric_mask
+        else:
+            mask = string_mask
+        if mask.any():
+            cleaned.loc[mask, column] = pd.NA
+
+    return cleaned
 
 
 def chip_list(title: str, items: list[str], kind: str, badge: str) -> None:
