@@ -13,6 +13,24 @@ TABLE_TYPE_LABELS = {
 }
 
 
+def iter_crosstab_tables(
+    df: pd.DataFrame,
+    main_vars: list[str],
+    disaggregation_vars: list[str],
+    table_type: str,
+) -> list[tuple[str, str, pd.DataFrame]]:
+    tables: list[tuple[str, str, pd.DataFrame]] = []
+    for main_var in main_vars:
+        for disagg_var in disaggregation_vars:
+            if main_var == disagg_var:
+                continue
+
+            table = compute_crosstab(df, disagg_var, main_var, table_type)
+            if not table.empty:
+                tables.append((main_var, disagg_var, table))
+    return tables
+
+
 def compute_crosstab(
     df: pd.DataFrame,
     row_var: str,
@@ -138,14 +156,12 @@ def build_crosstab_excel(
             max_widths[0] = max(max_widths.get(0, 0), len(f"Variable de análisis: {main_var}") + 2)
             current_row += 2
 
-            for disagg_var in disaggregation_vars:
-                if main_var == disagg_var:
-                    continue
-
-                table = compute_crosstab(df, disagg_var, main_var, table_type)
-                if table.empty:
-                    continue
-
+            for table_main_var, disagg_var, table in iter_crosstab_tables(
+                df,
+                [main_var],
+                disaggregation_vars,
+                table_type,
+            ):
                 table_title = f"Tabla: {main_var} x {disagg_var}"
                 worksheet.write(current_row, 0, table_title, title_format)
                 worksheet.write(

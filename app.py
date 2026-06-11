@@ -12,6 +12,7 @@ from src.crosstabs import (
     build_crosstab_excel,
     compute_crosstab,
     format_crosstab_for_display,
+    iter_crosstab_tables,
 )
 from src.data_loader import get_excel_sheets, load_uploaded_file, normalize_columns
 from src.descriptive_stats import (
@@ -822,8 +823,7 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             help="Este formato se aplicará a todas las tablas cruzadas generadas en el archivo.",
         )
         st.caption(
-            "El Excel tendrá una hoja por variable principal y dentro de cada hoja aparecerán todas "
-            "las desagregaciones seleccionadas."
+            "El Excel tendrá una hoja única con las tablas agrupadas por variable principal."
         )
 
     reverse_type_labels = {label: key for key, label in TABLE_TYPE_LABELS.items()}
@@ -855,30 +855,15 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             panel_end()
             return pd.DataFrame()
 
-        preview_main = ""
-        preview_disagg = ""
-        preview_table = pd.DataFrame()
-        for candidate_main, candidate_disagg in valid_pairs:
-            candidate_table = compute_crosstab(df, candidate_disagg, candidate_main, table_type)
-            if not candidate_table.empty:
-                preview_main = candidate_main
-                preview_disagg = candidate_disagg
-                preview_table = candidate_table
-                break
-
-        if preview_table.empty:
+        preview_tables = iter_crosstab_tables(df, main_vars, disaggregation_vars, table_type)
+        if not preview_tables:
             st.info("No hay datos válidos para las combinaciones seleccionadas.")
             panel_end()
             return pd.DataFrame()
 
         panel_start(
-            f"Vista previa: {preview_main} x {preview_disagg}",
-            f"{table_type_label}. Se muestra la primera combinación; el Excel incluirá todas.",
-        )
-        render_styled_table(
-            format_crosstab_for_display(preview_table, table_type),
-            height=430,
-            key_prefix="cross_preview",
+            "Vista previa del Excel",
+            f"{table_type_label}. Se muestran hasta 5 tablas; el Excel incluirá todas las combinaciones válidas.",
         )
         excel_buffer = build_crosstab_excel(df, main_vars, disaggregation_vars, table_type)
         st.download_button(
@@ -888,12 +873,29 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
             key="cross_download_excel",
-            help="Descarga un Excel con una hoja por variable principal y una tabla por cada desagregación.",
+            help="Descarga un Excel con una hoja única y las tablas agrupadas por variable principal.",
         )
+        preview_limit = 5
+        previous_main = None
+        for index, (preview_main, preview_disagg, preview_table) in enumerate(preview_tables[:preview_limit], start=1):
+            if preview_main != previous_main:
+                st.markdown(f"#### Variable de análisis: {preview_main}")
+                previous_main = preview_main
+            st.markdown(f"**Tabla {index}: {preview_main} x {preview_disagg}**")
+            render_styled_table(
+                format_crosstab_for_display(preview_table, table_type),
+                height=260,
+                key_prefix=f"cross_preview_{index}",
+            )
+        if len(preview_tables) > preview_limit:
+            st.caption(
+                f"Vista previa limitada a {preview_limit} de {len(preview_tables)} tablas. "
+                "Descarga el Excel para ver el conjunto completo."
+            )
         panel_end()
 
     panel_end()
-    return preview_table.reset_index()
+    return preview_tables[0][2].reset_index()
 
 
 def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: list[str]) -> None:
