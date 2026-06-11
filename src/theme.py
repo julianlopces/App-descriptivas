@@ -377,6 +377,67 @@ def get_institutional_css() -> str:
             border-color: var(--stroke) !important;
         }}
 
+        [data-testid="stMain"] [data-testid="stTextInput"] [data-baseweb="base-input"] > div,
+        [data-testid="stMain"] [data-testid="stNumberInput"] [data-baseweb="base-input"] > div,
+        [data-testid="stMain"] [data-testid="stTextArea"] [data-baseweb="base-input"] > div {{
+            background: var(--panel-soft) !important;
+            border: 2px solid var(--accent) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 0 rgba(2, 15, 80, 0.08), 0 6px 16px rgba(2, 15, 80, 0.06) !important;
+            min-height: 42px;
+        }}
+
+        [data-testid="stMain"] [data-testid="stTextInputRootElement"],
+        [data-testid="stMain"] [data-testid="stNumberInputContainer"],
+        [data-testid="stMain"] [data-testid="stTextArea"] [data-baseweb="textarea"],
+        [data-testid="stMain"] [data-testid="stTextInput"] [data-baseweb="input"],
+        [data-testid="stMain"] [data-testid="stNumberInput"] [data-baseweb="input"] {{
+            background: var(--panel-soft) !important;
+            border: 2px solid var(--accent) !important;
+            border-radius: 8px !important;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65), 0 8px 18px rgba(2, 15, 80, 0.1) !important;
+        }}
+
+        [data-testid="stMain"] [data-testid="stTextInput"] input,
+        [data-testid="stMain"] [data-testid="stNumberInput"] input,
+        [data-testid="stMain"] [data-testid="stTextArea"] textarea {{
+            color: var(--text-strong) !important;
+            background: transparent !important;
+            font-weight: 500 !important;
+        }}
+
+        [data-testid="stMain"] [data-testid="stTextInput"] [data-baseweb="base-input"] > div:hover,
+        [data-testid="stMain"] [data-testid="stNumberInput"] [data-baseweb="base-input"] > div:hover,
+        [data-testid="stMain"] [data-testid="stTextArea"] [data-baseweb="base-input"] > div:hover {{
+            border-color: var(--accent-3) !important;
+            box-shadow: 0 0 0 1px rgba(25, 85, 166, 0.18), 0 8px 18px rgba(2, 15, 80, 0.08) !important;
+        }}
+
+        [data-testid="stMain"] [data-testid="stTextInputRootElement"]:hover,
+        [data-testid="stMain"] [data-testid="stNumberInputContainer"]:hover,
+        [data-testid="stMain"] [data-testid="stTextArea"] [data-baseweb="textarea"]:hover,
+        [data-testid="stMain"] [data-testid="stTextInput"] [data-baseweb="input"]:hover,
+        [data-testid="stMain"] [data-testid="stNumberInput"] [data-baseweb="input"]:hover {{
+            border-color: var(--accent-3) !important;
+            box-shadow: 0 0 0 1px rgba(25, 85, 166, 0.2), 0 10px 20px rgba(2, 15, 80, 0.1) !important;
+        }}
+
+        [data-testid="stMain"] [data-testid="stTextInput"] [data-baseweb="base-input"] > div:focus-within,
+        [data-testid="stMain"] [data-testid="stNumberInput"] [data-baseweb="base-input"] > div:focus-within,
+        [data-testid="stMain"] [data-testid="stTextArea"] [data-baseweb="base-input"] > div:focus-within {{
+            border-color: var(--focus) !important;
+            box-shadow: 0 0 0 2px rgba(25, 85, 166, 0.18), 0 0 0 4px rgba(25, 85, 166, 0.22) !important;
+        }}
+
+        [data-testid="stMain"] [data-testid="stTextInputRootElement"]:focus-within,
+        [data-testid="stMain"] [data-testid="stNumberInputContainer"]:focus-within,
+        [data-testid="stMain"] [data-testid="stTextArea"] [data-baseweb="textarea"]:focus-within,
+        [data-testid="stMain"] [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+        [data-testid="stMain"] [data-testid="stNumberInput"] [data-baseweb="input"]:focus-within {{
+            border-color: var(--focus) !important;
+            box-shadow: 0 0 0 2px rgba(25, 85, 166, 0.2), 0 0 0 4px rgba(25, 85, 166, 0.26) !important;
+        }}
+
         [data-testid="stMain"] [data-baseweb="tag"] {{
             background: var(--accent-3) !important;
             border-color: var(--accent-3) !important;

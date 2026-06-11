@@ -14,7 +14,13 @@ from src.crosstabs import (
     format_crosstab_for_display,
     iter_crosstab_tables,
 )
-from src.data_loader import get_excel_sheets, load_uploaded_file, normalize_columns
+from src.data_loader import (
+    apply_custom_missing_values,
+    get_excel_sheets,
+    load_uploaded_file,
+    normalize_columns,
+    parse_custom_missing_values,
+)
 from src.descriptive_stats import (
     categorical_summary,
     continuous_summary,
@@ -168,9 +174,11 @@ def render_styled_table(
 def init_state() -> None:
     defaults = {
         "df": None,
+        "raw_df": None,
         "file_name": None,
         "continuous_vars": [],
         "categorical_vars": [],
+        "custom_missing_values": "",
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -262,9 +270,12 @@ def load_controls() -> None:
             if loaded.empty:
                 st.error("El archivo no contiene filas de datos.")
                 return
-            st.session_state.df = loaded
+            st.session_state.raw_df = loaded
+            missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
+            loaded_for_analysis = apply_custom_missing_values(loaded, missing_values)
+            st.session_state.df = loaded_for_analysis
             st.session_state.file_name = uploaded.name
-            detected = detect_variable_types(loaded)
+            detected = detect_variable_types(loaded_for_analysis)
             st.session_state.continuous_vars = detected["continuous"]
             st.session_state.categorical_vars = detected["categorical"]
             st.rerun()
@@ -275,7 +286,7 @@ def load_controls() -> None:
 def variable_controls(df: pd.DataFrame) -> tuple[list[str], list[str]]:
     all_columns = list(df.columns)
 
-    st.markdown('<div class="side-heading">Clasificación</div>', unsafe_allow_html=True)
+    st.markdown('<div class="side-heading">Ajustes de lectura</div>', unsafe_allow_html=True)
     with st.expander("Ajustar tipos", expanded=False):
         continuous = st.multiselect(
             "Continuas",
@@ -288,6 +299,31 @@ def variable_controls(df: pd.DataFrame) -> tuple[list[str], list[str]]:
             categorical_options,
             default=[c for c in st.session_state.categorical_vars if c in categorical_options],
         )
+
+    with st.expander("Control de missing", expanded=False):
+        st.text_area(
+            "Valores personalizados como missing",
+            key="custom_missing_values",
+            placeholder="Ejemplo: 9999, 0000, NS/NR",
+            help=(
+                "Escribe valores separados por coma, punto y coma o salto de línea. "
+                "La app los tratará como valores perdidos además de las celdas vacías."
+            ),
+            height=92,
+        )
+        custom_missing = parse_custom_missing_values(st.session_state.custom_missing_values)
+        if custom_missing:
+            raw_df = st.session_state.raw_df
+            added_missing = 0
+            if raw_df is not None:
+                added_missing = int(df.isna().sum().sum() - raw_df.isna().sum().sum())
+            st.caption(
+                f"Valores activos: {', '.join(custom_missing[:8])}"
+                f"{'...' if len(custom_missing) > 8 else ''}. "
+                f"Celdas adicionales tratadas como perdidas: {max(added_missing, 0):,}."
+            )
+        else:
+            st.caption("Sin valores personalizados. Solo se tratan como perdidas las celdas vacías o nulas.")
 
     st.session_state.continuous_vars = continuous
     st.session_state.categorical_vars = categorical
@@ -372,7 +408,7 @@ def sync_palette_style_defaults(selected_palette: str) -> None:
     st.session_state["chart_palette_applied"] = selected_palette
 
 
-def chart_style_controls() -> dict[str, object]:
+def chart_style_controls(chart_type: str | None = None) -> dict[str, object]:
     with st.expander("Estilo del gráfico", expanded=True):
         available_palettes = get_available_palettes()
         palette_options = list(available_palettes.keys())
@@ -398,6 +434,15 @@ def chart_style_controls() -> dict[str, object]:
                 list(FONT_FAMILIES.keys()),
             )
             font_size = st.slider("Tamaño de fuente", 10, 28, 16)
+        orientation = None
+        if chart_type == "Barras":
+            orientation = st.segmented_control(
+                "Orientación",
+                ["Vertical", "Horizontal"],
+                default="Vertical",
+                key="bar_orientation",
+                help="Define si las barras se muestran de abajo hacia arriba o de izquierda a derecha.",
+            )
         show_grid = st.toggle("Mostrar grilla", value=True)
     return {
         "palette_name": palette_name,
@@ -412,6 +457,7 @@ def chart_style_controls() -> dict[str, object]:
         "grid_color": grid_color,
         "font_family": font_family,
         "font_size": font_size,
+        "orientation": orientation,
     }
 
 
@@ -932,40 +978,75 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
         preview_panel = st.container(height=760, border=False)
 
     with control_panel:
-        st.markdown('<div class="side-heading">Tipo de análisis</div>', unsafe_allow_html=True)
-        chart_type = st.radio(
-            "Tipo de gráfico",
-            ["Barras", "Histograma", "Gráfico de dispersión"],
-            horizontal=False,
-            label_visibility="collapsed",
-        )
-        style_config = chart_style_controls()
+        with st.expander("Tipo de gráfico", expanded=True):
+            chart_type = st.radio(
+                "Tipo de gráfico",
+                ["Barras", "Histograma", "Gráfico de dispersión"],
+                horizontal=False,
+                label_visibility="collapsed",
+            )
+            barmode = "Apiladas"
+            percent = False
+            bins = 30
+            show_trendline = False
+            if chart_type == "Barras":
+                barmode = st.segmented_control(
+                    "Modo de barras",
+                    ["Apiladas", "Agrupadas"],
+                    default="Apiladas",
+                    help="Define si las barras se muestran apiladas o una al lado de la otra.",
+                )
+                percent = st.toggle(
+                    "Mostrar porcentajes",
+                    value=False,
+                    help="Si se activa, el eje Y se expresa en porcentaje en lugar de frecuencia.",
+                )
+            elif chart_type == "Histograma":
+                bins = st.slider(
+                    "Bins",
+                    5,
+                    100,
+                    30,
+                    help="Cantidad de intervalos usados para agrupar los datos.",
+                )
+            else:
+                show_trendline = st.toggle(
+                    "Mostrar línea de ajuste",
+                    value=False,
+                    help="Agrega una línea de ajuste para resumir la relación entre X e Y.",
+                )
 
         if chart_type == "Histograma":
             if not continuous_vars:
                 st.info("No hay variables continuas seleccionadas.")
                 return
-            x = st.selectbox("Variable continua", continuous_vars, help="Variable numérica que se distribuirá en el histograma.")
-            color = st.selectbox("Agrupación/color", ["Ninguna"] + categorical_vars)
-            bins = st.slider("Bins", 5, 100, 30, help="Cantidad de intervalos usados para agrupar los datos.")
-            title = chart_title_controls(f"Histograma de {x}", "hist")
+            with st.expander("Selección de variables", expanded=True):
+                x = st.selectbox(
+                    "Variable continua",
+                    continuous_vars,
+                    help="Variable numérica que se distribuirá en el histograma.",
+                )
+                color = st.selectbox("Agrupación/color", ["Ninguna"] + categorical_vars)
+            with st.expander("Textos, etiquetas y rango de ejes", expanded=True):
+                title = chart_title_controls(f"Histograma de {x}", "hist")
+                x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
+                y_label = st.text_input("Eje Y", "Frecuencia", help="Texto visible del eje vertical.")
+                legend_title = st.text_input(
+                    "Título de la leyenda",
+                    "" if color == "Ninguna" else color,
+                    key="hist_legend_title",
+                    help="Nombre que aparecerá sobre la leyenda del gráfico.",
+                )
+                axis_ranges = axis_range_controls(
+                    x_label,
+                    y_label,
+                    key_prefix="hist",
+                    x_numeric=True,
+                    y_numeric=True,
+                )
+            style_config = chart_style_controls(chart_type)
             style_config.update(st.session_state["hist_title_options"])
-            x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
-            y_label = st.text_input("Eje Y", "Frecuencia", help="Texto visible del eje vertical.")
-            legend_title = st.text_input(
-                "Título de la leyenda",
-                "" if color == "Ninguna" else color,
-                key="hist_legend_title",
-                help="Nombre que aparecerá sobre la leyenda del gráfico.",
-            )
             style_config["legend_title"] = legend_title
-            axis_ranges = axis_range_controls(
-                x_label,
-                y_label,
-                key_prefix="hist",
-                x_numeric=True,
-                y_numeric=True,
-            )
             fig = histogram(
                 df,
                 x=x,
@@ -984,70 +1065,78 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             if not categorical_vars:
                 st.info("No hay variables categóricas seleccionadas.")
                 return
-            x = st.selectbox("Variable de conteo/principal", categorical_vars, help="Variable cuyas categorías se verán en el eje principal.")
-            color_options = [c for c in categorical_vars if c != x]
-            color = st.selectbox("Variable para desagregar/color", ["Ninguna"] + color_options, help="Variable opcional para separar las barras por color.")
-            facet_options = [
-                c
-                for c in categorical_vars
-                if c not in {x, None if color == "Ninguna" else color}
-            ]
-            facet = st.selectbox("Tercera variable / panel", ["Ninguna"] + facet_options, help="Crea paneles adicionales para una tercera variable categórica.")
-            barmode = st.segmented_control(
-                "Modo de barras",
-                ["Apiladas", "Agrupadas"],
-                default="Apiladas",
-                help="Define si las barras se muestran apiladas o una al lado de la otra.",
-            )
-            percent = st.toggle("Mostrar porcentajes", value=False, help="Si se activa, el eje Y se expresa en porcentaje en lugar de frecuencia.")
-            percent_denominator = "total"
-            if percent:
-                denominator_options = {"Total general": "total", f"Total por {x}": "x"}
-                if color != "Ninguna":
-                    denominator_options[f"Total por {color}"] = "color"
-                if facet != "Ninguna":
-                    denominator_options[f"Total por {facet}"] = "facet"
-                denominator_label = st.selectbox(
-                    "Calcular porcentaje sobre",
-                    list(denominator_options.keys()),
-                    help="Elige sobre qué total se calcularán los porcentajes mostrados en las barras.",
+            with st.expander("Selección de variables", expanded=True):
+                x = st.selectbox(
+                    "Variable de conteo/principal",
+                    categorical_vars,
+                    help="Variable cuyas categorías se verán en el eje principal.",
                 )
-                percent_denominator = denominator_options[denominator_label]
-            show_labels = st.toggle("Mostrar etiquetas en barras", value=True, help="Muestra el valor o porcentaje directamente sobre cada barra.")
-            label_decimals = 2
-            if show_labels:
-                label_decimals = st.number_input(
-                    "Decimales de etiquetas",
-                    min_value=0,
-                    max_value=6,
-                    value=2,
-                    step=1,
-                    help="Cantidad máxima de decimales mostrados en las etiquetas.",
+                color_options = [c for c in categorical_vars if c != x]
+                color = st.selectbox(
+                    "Variable para desagregar/color",
+                    ["Ninguna"] + color_options,
+                    help="Variable opcional para separar las barras por color.",
                 )
-            orientation = st.segmented_control(
-                "Orientación",
-                ["Vertical", "Horizontal"],
-                default="Vertical",
-                help="Define si las barras se muestran de abajo hacia arriba o de izquierda a derecha.",
-            )
-            title = chart_title_controls(f"Barras de {x}", "bar")
+                facet_options = [
+                    c
+                    for c in categorical_vars
+                    if c not in {x, None if color == "Ninguna" else color}
+                ]
+                facet = st.selectbox(
+                    "Tercera variable / panel",
+                    ["Ninguna"] + facet_options,
+                    help="Crea paneles adicionales para una tercera variable categórica.",
+                )
+                percent_denominator = "total"
+                if percent:
+                    denominator_options = {"Total general": "total", f"Total por {x}": "x"}
+                    if color != "Ninguna":
+                        denominator_options[f"Total por {color}"] = "color"
+                    if facet != "Ninguna":
+                        denominator_options[f"Total por {facet}"] = "facet"
+                    denominator_label = st.selectbox(
+                        "Calcular porcentaje sobre",
+                        list(denominator_options.keys()),
+                        help="Elige sobre qué total se calcularán los porcentajes mostrados en las barras.",
+                    )
+                    percent_denominator = denominator_options[denominator_label]
+            orientation_for_ranges = str(st.session_state.get("bar_orientation", "Vertical"))
+            with st.expander("Textos, etiquetas y rango de ejes", expanded=True):
+                title = chart_title_controls(f"Barras de {x}", "bar")
+                x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
+                y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia", help="Texto visible del eje vertical.")
+                legend_title = st.text_input(
+                    "Título de la leyenda",
+                    "" if color == "Ninguna" else color,
+                    key="bar_legend_title",
+                    help="Nombre que aparecerá sobre la leyenda del gráfico.",
+                )
+                show_labels = st.toggle(
+                    "Mostrar etiquetas en barras",
+                    value=True,
+                    help="Muestra el valor o porcentaje directamente sobre cada barra.",
+                )
+                label_decimals = 2
+                if show_labels:
+                    label_decimals = st.number_input(
+                        "Decimales de etiquetas",
+                        min_value=0,
+                        max_value=6,
+                        value=2,
+                        step=1,
+                        help="Cantidad máxima de decimales mostrados en las etiquetas.",
+                    )
+                axis_ranges = axis_range_controls(
+                    x_label,
+                    y_label,
+                    key_prefix="bar",
+                    x_numeric=orientation_for_ranges == "Horizontal",
+                    y_numeric=orientation_for_ranges == "Vertical",
+                )
+            style_config = chart_style_controls(chart_type)
             style_config.update(st.session_state["bar_title_options"])
-            x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
-            y_label = st.text_input("Eje Y", "Porcentaje" if percent else "Frecuencia", help="Texto visible del eje vertical.")
-            legend_title = st.text_input(
-                "Título de la leyenda",
-                "" if color == "Ninguna" else color,
-                key="bar_legend_title",
-                help="Nombre que aparecerá sobre la leyenda del gráfico.",
-            )
             style_config["legend_title"] = legend_title
-            axis_ranges = axis_range_controls(
-                x_label,
-                y_label,
-                key_prefix="bar",
-                x_numeric=orientation == "Horizontal",
-                y_numeric=orientation == "Vertical",
-            )
+            orientation = str(style_config.get("orientation") or "Vertical")
             fig = bar_chart(
                 df,
                 x=x,
@@ -1071,58 +1160,56 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
             if len(continuous_vars) < 2:
                 st.info("Selecciona al menos dos variables continuas.")
                 return
-            x = st.selectbox("Variable X", continuous_vars, help="Variable numérica que se mostrará en el eje horizontal.")
-            y = st.selectbox("Variable Y", [c for c in continuous_vars if c != x], help="Variable numérica que se mostrará en el eje vertical.")
-            color = st.selectbox("Color", ["Ninguna"] + categorical_vars, help="Variable opcional para diferenciar puntos por grupo.")
-            show_trendline = st.toggle(
-                "Mostrar línea de ajuste",
-                value=False,
-                help="Agrega una línea de ajuste para resumir la relación entre X e Y.",
-            )
+            with st.expander("Selección de variables", expanded=True):
+                x = st.selectbox("Variable X", continuous_vars, help="Variable numérica que se mostrará en el eje horizontal.")
+                y = st.selectbox("Variable Y", [c for c in continuous_vars if c != x], help="Variable numérica que se mostrará en el eje vertical.")
+                color = st.selectbox("Color", ["Ninguna"] + categorical_vars, help="Variable opcional para diferenciar puntos por grupo.")
             trendline_method = "OLS"
             trendline_scope = "overall"
             trendline_color = "#F7966B"
-            if show_trendline:
-                trendline_method = st.selectbox(
-                    "Método de ajuste",
-                    ["OLS"],
-                    index=0,
-                    help="Método estadístico usado para calcular la línea de ajuste.",
+            with st.expander("Textos, etiquetas y rango de ejes", expanded=True):
+                title = chart_title_controls(f"{y} vs {x}", "scatter")
+                x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
+                y_label = st.text_input("Eje Y", y, help="Texto visible del eje vertical.")
+                legend_title = st.text_input(
+                    "Título de la leyenda",
+                    "" if color == "Ninguna" else color,
+                    key="scatter_legend_title",
+                    help="Nombre que aparecerá sobre la leyenda del gráfico.",
                 )
-                if color != "Ninguna":
-                    trendline_scope_label = st.selectbox(
-                        "Cálculo de la línea de ajuste",
-                        ["General", "Por subgrupos"],
+                if show_trendline:
+                    trendline_method = st.selectbox(
+                        "Método de ajuste",
+                        ["OLS"],
                         index=0,
-                        help="Elige si la línea de ajuste se calcula para todos los puntos o por cada grupo de color.",
+                        help="Método estadístico usado para calcular la línea de ajuste.",
                     )
-                    trendline_scope = "overall" if trendline_scope_label == "General" else "trace"
-                if color == "Ninguna" or trendline_scope == "overall":
-                    trendline_color = st.color_picker(
-                        "Color de la línea de ajuste",
-                        value="#F7966B",
-                        help="Color aplicado a la línea de ajuste general.",
-                    )
-                else:
-                    st.caption("Las líneas de ajuste por subgrupos usarán automáticamente el mismo color que sus puntos.")
-            title = chart_title_controls(f"{y} vs {x}", "scatter")
+                    if color != "Ninguna":
+                        trendline_scope_label = st.selectbox(
+                            "Cálculo de la línea de ajuste",
+                            ["General", "Por subgrupos"],
+                            index=0,
+                            help="Elige si la línea de ajuste se calcula para todos los puntos o por cada grupo de color.",
+                        )
+                        trendline_scope = "overall" if trendline_scope_label == "General" else "trace"
+                    if color == "Ninguna" or trendline_scope == "overall":
+                        trendline_color = st.color_picker(
+                            "Color de la línea de ajuste",
+                            value="#F7966B",
+                            help="Color aplicado a la línea de ajuste general.",
+                        )
+                    else:
+                        st.caption("Las líneas de ajuste por subgrupos usarán automáticamente el mismo color que sus puntos.")
+                axis_ranges = axis_range_controls(
+                    x_label,
+                    y_label,
+                    key_prefix="scatter",
+                    x_numeric=True,
+                    y_numeric=True,
+                )
+            style_config = chart_style_controls(chart_type)
             style_config.update(st.session_state["scatter_title_options"])
-            x_label = st.text_input("Eje X", x, help="Texto visible del eje horizontal.")
-            y_label = st.text_input("Eje Y", y, help="Texto visible del eje vertical.")
-            legend_title = st.text_input(
-                "Título de la leyenda",
-                "" if color == "Ninguna" else color,
-                key="scatter_legend_title",
-                help="Nombre que aparecerá sobre la leyenda del gráfico.",
-            )
             style_config["legend_title"] = legend_title
-            axis_ranges = axis_range_controls(
-                x_label,
-                y_label,
-                key_prefix="scatter",
-                x_numeric=True,
-                y_numeric=True,
-            )
             fig = scatter_plot(
                 df,
                 x=x,
@@ -1314,6 +1401,13 @@ def main() -> None:
 
     with st.sidebar:
         load_controls()
+        raw_df = st.session_state.raw_df
+        if raw_df is None and st.session_state.df is not None:
+            raw_df = st.session_state.df
+            st.session_state.raw_df = raw_df
+        if raw_df is not None:
+            missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
+            st.session_state.df = apply_custom_missing_values(raw_df, missing_values)
         df = st.session_state.df
         if df is not None:
             continuous_vars, categorical_vars = variable_controls(df)
