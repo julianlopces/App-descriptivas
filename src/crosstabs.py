@@ -71,10 +71,22 @@ def build_crosstab_excel(
     table_type: str,
 ) -> BytesIO:
     output = BytesIO()
-    used_sheet_names: set[str] = set()
 
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         workbook = writer.book
+        worksheet = workbook.add_worksheet("Tablas cruzadas")
+        writer.sheets["Tablas cruzadas"] = worksheet
+
+        section_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#FFFFFF",
+                "bg_color": "#1955A6",
+                "font_size": 13,
+                "border": 1,
+                "border_color": "#020F50",
+            }
+        )
         title_format = workbook.add_format(
             {
                 "bold": True,
@@ -117,13 +129,14 @@ def build_crosstab_excel(
             }
         )
 
-        for main_var in main_vars:
-            sheet_name = sanitize_excel_sheet_name(main_var, used_sheet_names)
-            worksheet = workbook.add_worksheet(sheet_name)
-            writer.sheets[sheet_name] = worksheet
+        current_row = 0
+        max_widths: dict[int, int] = {}
 
-            current_row = 0
-            max_widths: dict[int, int] = {}
+        for main_var in main_vars:
+            variable_start_row = current_row
+            worksheet.write(current_row, 0, f"Variable de análisis: {main_var}", section_format)
+            max_widths[0] = max(max_widths.get(0, 0), len(f"Variable de análisis: {main_var}") + 2)
+            current_row += 2
 
             for disagg_var in disaggregation_vars:
                 if main_var == disagg_var:
@@ -161,11 +174,15 @@ def build_crosstab_excel(
 
                 current_row = start_row + len(table.index) + 4
 
-            if current_row == 0:
-                worksheet.write(0, 0, f"Sin datos válidos para {main_var}", title_format)
+            if current_row == variable_start_row + 2:
+                worksheet.write(current_row, 0, f"Sin datos válidos para {main_var}", title_format)
+                current_row += 3
 
-            for col_idx, width in max_widths.items():
-                worksheet.set_column(col_idx, col_idx, min(max(width, 14), 42))
+        if current_row == 0:
+            worksheet.write(0, 0, "Sin tablas cruzadas válidas para exportar.", title_format)
+
+        for col_idx, width in max_widths.items():
+            worksheet.set_column(col_idx, col_idx, min(max(width, 14), 42))
 
     output.seek(0)
     return output
