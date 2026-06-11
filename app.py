@@ -146,15 +146,22 @@ def style_table(table: pd.DataFrame, max_decimals: int) -> pd.io.formats.style.S
     )
 
 
-def render_styled_table(table: pd.DataFrame, *, height: int, key_prefix: str) -> None:
-    max_decimals = st.number_input(
-        "Decimales máximos visibles",
-        min_value=0,
-        max_value=6,
-        value=2,
-        step=1,
-        key=f"{key_prefix}_table_decimals",
-    )
+def render_styled_table(
+    table: pd.DataFrame,
+    *,
+    height: int,
+    key_prefix: str,
+    max_decimals: int | None = None,
+) -> None:
+    if max_decimals is None:
+        max_decimals = st.number_input(
+            "Decimales máximos visibles",
+            min_value=0,
+            max_value=6,
+            value=2,
+            step=1,
+            key=f"{key_prefix}_table_decimals",
+        )
     st.dataframe(style_table(table, int(max_decimals)), use_container_width=True, height=height)
 
 
@@ -822,6 +829,15 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             key="cross_table_type",
             help="Este formato se aplicará a todas las tablas cruzadas generadas en el archivo.",
         )
+        table_decimals = st.number_input(
+            "Decimales máximos visibles",
+            min_value=0,
+            max_value=6,
+            value=2,
+            step=1,
+            key="cross_table_decimals",
+            help="Cantidad máxima de decimales para la vista previa y el Excel. Los ceros finales se ocultan.",
+        )
         st.caption(
             "El Excel tendrá una hoja única con las tablas agrupadas por variable principal."
         )
@@ -865,7 +881,13 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             "Vista previa del Excel",
             f"{table_type_label}. Se muestran hasta 5 tablas; el Excel incluirá todas las combinaciones válidas.",
         )
-        excel_buffer = build_crosstab_excel(df, main_vars, disaggregation_vars, table_type)
+        excel_buffer = build_crosstab_excel(
+            df,
+            main_vars,
+            disaggregation_vars,
+            table_type,
+            max_decimals=int(table_decimals),
+        )
         st.download_button(
             "Descargar Excel",
             excel_buffer.getvalue(),
@@ -883,9 +905,10 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
                 previous_main = preview_main
             st.markdown(f"**Tabla {index}: {preview_main} x {preview_disagg}**")
             render_styled_table(
-                format_crosstab_for_display(preview_table, table_type),
+                format_crosstab_for_display(preview_table, table_type, max_decimals=int(table_decimals)),
                 height=260,
                 key_prefix=f"cross_preview_{index}",
+                max_decimals=int(table_decimals),
             )
         if len(preview_tables) > preview_limit:
             st.caption(

@@ -50,19 +50,44 @@ def compute_crosstab(
 
     if table_type == "row_pct":
         totals = table.sum(axis=1).replace(0, pd.NA)
-        return (table.div(totals, axis=0) * 100).round(1).fillna(0.0)
+        return (table.div(totals, axis=0) * 100).fillna(0.0)
 
     if table_type == "col_pct":
         totals = table.sum(axis=0).replace(0, pd.NA)
-        return (table.div(totals, axis=1) * 100).round(1).fillna(0.0)
+        return (table.div(totals, axis=1) * 100).fillna(0.0)
 
     raise ValueError(f"Tipo de tabla no soportado: {table_type}")
 
 
-def format_crosstab_for_display(table: pd.DataFrame, table_type: str) -> pd.DataFrame:
+def _format_number(value: object, max_decimals: int, suffix: str = "") -> str:
+    if pd.isna(value):
+        return ""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    rounded = round(number, max_decimals)
+    if float(rounded).is_integer():
+        return f"{int(rounded)}{suffix}"
+    formatted = f"{rounded:.{max_decimals}f}".rstrip("0").rstrip(".")
+    return f"{formatted}{suffix}"
+
+
+def _excel_percent_format(max_decimals: int) -> str:
+    if max_decimals <= 0:
+        return '0"%"'
+    return f'0.{"#" * max_decimals}"%"'
+
+
+def format_crosstab_for_display(
+    table: pd.DataFrame,
+    table_type: str,
+    *,
+    max_decimals: int = 2,
+) -> pd.DataFrame:
     if table.empty or table_type == "absolute":
         return table
-    return table.apply(lambda column: column.map(lambda value: f"{value:.1f}%"))
+    return table.apply(lambda column: column.map(lambda value: _format_number(value, max_decimals, "%")))
 
 
 def sanitize_excel_sheet_name(name: str, existing_names: set[str] | None = None) -> str:
@@ -87,6 +112,8 @@ def build_crosstab_excel(
     main_vars: list[str],
     disaggregation_vars: list[str],
     table_type: str,
+    *,
+    max_decimals: int = 2,
 ) -> BytesIO:
     output = BytesIO()
 
@@ -143,7 +170,7 @@ def build_crosstab_excel(
                 "font_color": "#000031",
                 "border": 1,
                 "border_color": "#D8E0F4",
-                "num_format": '0.0"%"',
+                "num_format": _excel_percent_format(max_decimals),
             }
         )
 
