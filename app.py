@@ -961,23 +961,20 @@ def render_landing_page() -> None:
             color: #1E293B !important;
             font-weight: 500 !important;
         }}
-        /* Icono de tabla: filter garantiza blanco sin importar estilos inline del SVG */
-        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] {{
-            filter: brightness(0) invert(1) !important;
+        /* Eliminar borde/outline exterior del contenedor del icono */
+        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"],
+        [data-testid="stFileUploaderFileData"] [role="img"] {{
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
         }}
-        /* Fallback con selectores directos */
-        [data-testid="stFileUploaderFileData"] div svg,
-        [data-testid="stFileUploaderFileData"] svg,
-        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg,
-        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg *,
-        [data-testid="stFileUploaderFileData"] svg path,
-        [data-testid="stFileUploaderFileData"] svg rect,
-        [data-testid="stFileUploaderFileData"] svg line,
-        [data-testid="stFileUploaderFileData"] svg *,
-        .stFileUploader [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg path {{
+        /* Trazos internos del icono de tabla en blanco — todas las pestañas */
+        [data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] svg path,
+        [data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] svg rect,
+        [data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] svg line,
+        [data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] svg * {{
             fill: #FFFFFF !important;
             stroke: #FFFFFF !important;
-            color: #FFFFFF !important;
         }}
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
@@ -1025,12 +1022,6 @@ def render_landing_page() -> None:
             fill: #1E293B !important;
             color: #1E293B !important;
         }}
-        /* Icono de documento junto al nombre del archivo cargado */
-        .stFileUploader div[data-testid="stFileUploaderFileData"] svg {{
-            fill: #FFFFFF !important;
-            color: #FFFFFF !important;
-        }}
-
         /* ── Widget labels (etiquetas de todos los inputs) ───────────── */
         [data-testid="stWidgetLabel"],
         [data-testid="stWidgetLabel"] * {{
