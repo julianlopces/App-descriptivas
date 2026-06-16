@@ -1774,4 +1774,47 @@ def main() -> None:
             st.session_state.raw_df = raw_df
         if raw_df is not None:
             missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
-            st.session_state.df = 
+            st.session_state.df = apply_custom_missing_values(raw_df, missing_values)
+        df = st.session_state.df
+        if df is not None:
+            continuous_vars, categorical_vars = variable_controls(df)
+        else:
+            continuous_vars, categorical_vars = [], []
+
+    render_app_header("Exploración descriptiva modular")
+
+    df = st.session_state.df
+    if df is None:
+        render_empty_state()
+        return
+
+    selected_continuous, selected_categorical = continuous_vars, categorical_vars
+    overview_metrics(df, selected_continuous, selected_categorical)
+
+    tables = {
+        "continuas": continuous_summary(df, selected_continuous),
+        "categoricas": categorical_summary(df, selected_categorical, max_levels=30),
+    }
+
+    tab_instructions, tab_preview, tab_graphs, tab_cross, tab_cont, tab_cat = st.tabs(
+        ["Instrucciones", "Vista previa", "Gráficos", "Tablas cruzadas", "Continuas", "Categóricas"]
+    )
+
+    with tab_instructions:
+        instructions_tab()
+    with tab_preview:
+        preview_tab(df)
+    with tab_graphs:
+        charts_tab(df, selected_continuous, selected_categorical)
+    with tab_cross:
+        cross = mass_crosstab_tab(df, selected_categorical)
+        if not cross.empty:
+            tables["tabla_cruzada"] = cross
+    with tab_cont:
+        tables["continuas"] = continuous_tab(df, selected_continuous)
+    with tab_cat:
+        tables["categoricas"] = categorical_tab(df, selected_categorical)
+
+
+if __name__ == "__main__":
+    main()
