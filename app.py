@@ -109,8 +109,12 @@ def inject_sidebar_dark_css() -> None:
             margin-bottom: 0px !important;
             padding-bottom: 0px !important;
         }}
+        [data-testid="stSidebar"] div.element-container:has(p:contains("CARGAR NUEVO ARCHIVO")) {{
+            margin-bottom: -18px !important;
+            padding-bottom: 0px !important;
+        }}
         [data-testid="stSidebar"] .stFileUploader {{
-            margin-top: -8px !important;
+            margin-top: -5px !important;
             padding-top: 0px !important;
         }}
         /* Ajustes de lectura: espacio antes del expander "Ajustar tipos" */
