@@ -852,6 +852,11 @@ def render_landing_page() -> None:
             fill: #1E293B !important;
             color: #1E293B !important;
         }}
+        /* Icono de documento junto al nombre del archivo cargado */
+        .stFileUploader div[data-testid="stFileUploaderFileData"] svg {{
+            fill: #FFFFFF !important;
+            color: #FFFFFF !important;
+        }}
 
         /* ── Widget labels (etiquetas de todos los inputs) ───────────── */
         [data-testid="stWidgetLabel"],
@@ -958,7 +963,7 @@ def render_landing_page() -> None:
     _, col_card, _ = st.columns([1, 3, 1])
     with col_card:
         uploaded = st.file_uploader(
-            "Arrastra tu base de datos aquí o haz clic para buscar (.xlsx, .csv)",
+            "Arrastre la bases de datos aquí o haga click para buscar",
             type=["csv", "xlsx", "xls"],
             accept_multiple_files=False,
             label_visibility="visible",
@@ -1773,12 +1778,4 @@ def main() -> None:
     with tab_cross:
         cross = mass_crosstab_tab(df, selected_categorical)
         if not cross.empty:
-            tables["tabla_cruzada"] = cross
-    with tab_cont:
-        tables["continuas"] = continuous_tab(df, selected_continuous)
-    with tab_cat:
-        tables["categoricas"] = categorical_tab(df, selected_categorical)
-
-
-if __name__ == "__main__":
-    main()
+            tables["tabla_cruzada"
