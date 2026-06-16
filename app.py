@@ -1778,4 +1778,12 @@ def main() -> None:
     with tab_cross:
         cross = mass_crosstab_tab(df, selected_categorical)
         if not cross.empty:
-            tables["tabla_cruzada"
+            tables["tabla_cruzada"] = cross
+    with tab_cont:
+        tables["continuas"] = continuous_tab(df, selected_continuous)
+    with tab_cat:
+        tables["categoricas"] = categorical_tab(df, selected_categorical)
+
+
+if __name__ == "__main__":
+    main()
