@@ -760,6 +760,189 @@ def render_empty_state() -> None:
     )
 
 
+def render_landing_page() -> None:
+    """Full-screen landing shown only when no dataset is loaded."""
+    logo_data_uri = get_logo_data_uri()
+    primary = INSTITUTIONAL_COLORS["primary"]  # #020F50
+
+    # --- CSS condicional: fondo oscuro + sidebar oculto ---
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-color: {primary} !important;
+        }}
+        header[data-testid="stHeader"] {{
+            background: {primary} !important;
+            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+        }}
+        [data-testid="stSidebar"],
+        [data-testid="collapsedControl"],
+        section[data-testid="stSidebarCollapsedControl"] {{
+            display: none !important;
+        }}
+        .block-container {{
+            padding-top: 1.5rem !important;
+            max-width: 860px !important;
+            margin: 0 auto !important;
+        }}
+        /* Uploader dropzone sobre fondo oscuro */
+        [data-testid="stFileUploaderDropzone"] {{
+            background: rgba(255,255,255,0.07) !important;
+            border: 2px dashed rgba(255,255,255,0.30) !important;
+            border-radius: 10px !important;
+        }}
+        [data-testid="stFileUploaderDropzone"] *,
+        [data-testid="stFileUploaderDropzone"] p,
+        [data-testid="stFileUploaderDropzone"] small,
+        [data-testid="stFileUploaderDropzone"] span {{
+            color: #FFFFFF !important;
+        }}
+        [data-testid="stFileUploaderDropzone"] svg {{
+            color: #FFFFFF !important;
+            fill: currentColor !important;
+            stroke: currentColor !important;
+        }}
+        /* Expander y selectbox sobre fondo oscuro */
+        [data-testid="stExpander"] details,
+        [data-testid="stExpander"] details summary,
+        [data-testid="stExpander"] summary * {{
+            color: rgba(255,255,255,0.80) !important;
+        }}
+        [data-testid="stExpander"] details summary svg {{
+            color: rgba(255,255,255,0.80) !important;
+            fill: currentColor !important;
+            stroke: currentColor !important;
+        }}
+        [data-testid="stExpander"] [data-baseweb="select"] > div,
+        [data-testid="stExpander"] [data-baseweb="select"] * {{
+            background: rgba(255,255,255,0.10) !important;
+            color: #FFFFFF !important;
+            border-color: rgba(255,255,255,0.20) !important;
+        }}
+        [data-testid="stWidgetLabel"],
+        [data-testid="stWidgetLabel"] * {{
+            color: rgba(255,255,255,0.80) !important;
+        }}
+        /* Archivo cargado en uploader */
+        [data-testid="stFileUploaderFileName"],
+        [data-testid="stFileUploaderFileSize"],
+        [data-testid="stUploadedFile"] * {{
+            color: #FFFFFF !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --- Logo arriba a la derecha ---
+    if logo_data_uri:
+        _, col_logo = st.columns([4, 1])
+        with col_logo:
+            st.markdown(
+                f'<img src="{logo_data_uri}" style="width:180px; display:block; margin-left:auto;" alt="Equilibrium">',
+                unsafe_allow_html=True,
+            )
+
+    # --- Título centrado ---
+    st.markdown(
+        """
+        <div style="text-align:center; margin:1.5rem 0 2rem;">
+            <h1 style="color:#FFFFFF; font-size:3rem; font-weight:800; margin:0 0 0.4rem;">QuanTi Stats</h1>
+            <p style="color:rgba(255,255,255,0.65); font-size:0.82rem; letter-spacing:0.14em;
+                      text-transform:uppercase; margin:0;">Creado por Equilibrium BDC</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --- Tarjeta de carga centrada ---
+    _, col_card, _ = st.columns([1, 3, 1])
+    with col_card:
+        uploaded = st.file_uploader(
+            "Arrastra tu base de datos aquí o haz clic para buscar (.xlsx, .csv)",
+            type=["csv", "xlsx", "xls"],
+            accept_multiple_files=False,
+            label_visibility="collapsed",
+        )
+
+        suffix = uploaded.name.rsplit(".", 1)[-1].lower() if uploaded else "csv"
+        sheet_name = None
+        csv_encoding = "utf-8"
+        csv_separator = "Auto"
+
+        with st.expander("Opciones de lectura", expanded=False):
+            if uploaded and suffix in {"xlsx", "xls"}:
+                try:
+                    sheets = get_excel_sheets(uploaded)
+                    sheet_name = st.selectbox("Hoja de Excel", sheets)
+                except Exception as exc:
+                    st.error(f"No fue posible leer las hojas: {exc}")
+            else:
+                csv_encoding = st.selectbox(
+                    "Codificación", ["utf-8", "utf-8-sig", "latin-1", "cp1252"], index=0
+                )
+                csv_separator = st.selectbox(
+                    "Separador", ["Auto", ",", ";", "\\t", "|"], index=0
+                )
+
+        if st.button("Cargar dataset", type="primary", use_container_width=True):
+            if uploaded is None:
+                st.warning("Primero selecciona un archivo.")
+            else:
+                try:
+                    loaded = load_uploaded_file(
+                        uploaded,
+                        sheet_name=sheet_name,
+                        csv_encoding=csv_encoding,
+                        csv_separator=csv_separator,
+                    )
+                    loaded = normalize_columns(loaded)
+                    if loaded.empty:
+                        st.error("El archivo no contiene filas de datos.")
+                    else:
+                        st.session_state.raw_df = loaded
+                        missing_values = parse_custom_missing_values(
+                            st.session_state.custom_missing_values
+                        )
+                        loaded_for_analysis = apply_custom_missing_values(loaded, missing_values)
+                        st.session_state.df = loaded_for_analysis
+                        st.session_state.file_name = uploaded.name
+                        detected = detect_variable_types(loaded_for_analysis)
+                        st.session_state.continuous_vars = detected["continuous"]
+                        st.session_state.categorical_vars = detected["categorical"]
+                        st.rerun()
+                except Exception as exc:
+                    st.error(f"No fue posible cargar el archivo: {exc}")
+
+    # --- Footer fijo ---
+    st.markdown(
+        """
+        <div style="
+            position:fixed; bottom:0; left:0; right:0;
+            background:rgba(0,0,0,0.30);
+            padding:0.85rem 2rem;
+            text-align:center;
+        ">
+            <div style="margin-bottom:0.35rem;">
+                <a href="#" style="color:rgba(255,255,255,0.70); text-decoration:none;
+                   margin:0 1rem; font-size:0.80rem;">Privacy Policy</a>
+                <a href="#" style="color:rgba(255,255,255,0.70); text-decoration:none;
+                   margin:0 1rem; font-size:0.80rem;">Terms of Service</a>
+                <a href="#" style="color:rgba(255,255,255,0.70); text-decoration:none;
+                   margin:0 1rem; font-size:0.80rem;">Contact Us</a>
+                <a href="#" style="color:rgba(255,255,255,0.70); text-decoration:none;
+                   margin:0 1rem; font-size:0.80rem;">Social Media Icons</a>
+            </div>
+            <div style="color:rgba(255,255,255,0.40); font-size:0.72rem;">
+                © 2026 Equilibrium BDC. All Rights Reserved.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def continuous_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     selected_columns = st.multiselect(
         "Variables continuas a mostrar",
@@ -1439,6 +1622,11 @@ def instructions_tab() -> None:
 def main() -> None:
     inject_styles()
     init_state()
+
+    # Landing page completa cuando no hay dataset cargado
+    if st.session_state.df is None:
+        render_landing_page()
+        return
 
     with st.sidebar:
         load_controls()
