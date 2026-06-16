@@ -70,6 +70,102 @@ def inject_styles() -> None:
     )
 
 
+def inject_sidebar_dark_css() -> None:
+    """Sidebar azul oscuro institucional — solo activo cuando hay dataset cargado."""
+    primary = INSTITUTIONAL_COLORS["primary"]  # #020F50
+    st.markdown(
+        f"""
+        <style>
+        [data-testid="stSidebar"] {{
+            background-color: {primary} !important;
+            border-right: 1px solid rgba(255,255,255,0.10) !important;
+        }}
+        [data-testid="stSidebar"] * {{
+            color: #FFFFFF !important;
+        }}
+        /* Headings de sección */
+        [data-testid="stSidebar"] .side-heading {{
+            color: rgba(255,255,255,0.55) !important;
+            letter-spacing: 0.06em;
+        }}
+        /* Dataset card */
+        [data-testid="stSidebar"] .dataset-card {{
+            background: rgba(255,255,255,0.08) !important;
+            border-color: rgba(255,255,255,0.20) !important;
+        }}
+        [data-testid="stSidebar"] .dataset-card .file-name,
+        [data-testid="stSidebar"] .dataset-card .file-meta {{
+            color: #FFFFFF !important;
+        }}
+        /* Divisor */
+        [data-testid="stSidebar"] hr,
+        [data-testid="stSidebar"] [data-testid="stDivider"] {{
+            border-color: rgba(255,255,255,0.15) !important;
+        }}
+        /* File uploader en sidebar */
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {{
+            background: rgba(255,255,255,0.08) !important;
+            border-color: rgba(255,255,255,0.25) !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * {{
+            color: #FFFFFF !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] svg {{
+            color: #FFFFFF !important;
+            fill: currentColor !important;
+        }}
+        /* Select / inputs */
+        [data-testid="stSidebar"] [data-baseweb="select"] > div,
+        [data-testid="stSidebar"] [data-baseweb="base-input"] > div {{
+            background: rgba(255,255,255,0.10) !important;
+            border-color: rgba(255,255,255,0.25) !important;
+        }}
+        [data-testid="stSidebar"] [data-baseweb="select"] svg {{
+            color: #FFFFFF !important;
+            fill: currentColor !important;
+        }}
+        /* Expander */
+        [data-testid="stSidebar"] [data-testid="stExpander"] details,
+        [data-testid="stSidebar"] [data-testid="stExpander"] details summary {{
+            background: rgba(255,255,255,0.06) !important;
+            border-color: rgba(255,255,255,0.15) !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary svg {{
+            color: #FFFFFF !important;
+            fill: currentColor !important;
+            stroke: currentColor !important;
+        }}
+        /* Textarea (custom missing) */
+        [data-testid="stSidebar"] textarea {{
+            background: rgba(255,255,255,0.10) !important;
+            border-color: rgba(255,255,255,0.25) !important;
+            color: #FFFFFF !important;
+        }}
+        /* Botón primario */
+        [data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"] {{
+            background: rgba(255,255,255,0.18) !important;
+            border-color: rgba(255,255,255,0.45) !important;
+            color: #FFFFFF !important;
+        }}
+        [data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"]:hover {{
+            background: rgba(255,255,255,0.28) !important;
+        }}
+        /* Dropdown opciones (popover) — fondo blanco para legibilidad */
+        [data-baseweb="popover"] [data-baseweb="menu"],
+        [data-baseweb="popover"] ul {{
+            background: #FFFFFF !important;
+        }}
+        [data-baseweb="popover"] [role="option"],
+        [data-baseweb="popover"] [role="option"] * {{
+            background: #FFFFFF !important;
+            color: {primary} !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_app_header(subtitle: str) -> None:
     logo_data_uri = get_logo_data_uri()
     logo_html = (
@@ -259,7 +355,20 @@ def dataset_card(df: pd.DataFrame | None) -> None:
 
 
 def load_controls() -> None:
-    render_app_header("v1.0 - campo rápido")
+    st.markdown(
+        """
+        <div style="text-align:center; padding:0.6rem 0 1rem;">
+            <div style="font-size:1.55rem; font-weight:800; color:#FFFFFF; line-height:1.2;">
+                QuanTi Stats
+            </div>
+            <div style="font-size:0.76rem; color:rgba(255,255,255,0.55); margin-top:0.3rem;
+                        letter-spacing:0.07em; text-transform:uppercase;">
+                Creado por Equilibrium BDC
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.divider()
     st.markdown('<div class="side-heading">Dataset</div>', unsafe_allow_html=True)
     dataset_card(st.session_state.df)
@@ -1676,177 +1785,4 @@ def export_tab(tables: dict[str, pd.DataFrame]) -> None:
 
         st.download_button(
             "Excel completo",
-            tables_to_excel_bytes(available),
-            "tablas_descriptivas.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-        )
-    panel_end()
-
-
-def preview_tab(df: pd.DataFrame) -> None:
-    panel_start("Vista previa del dataset", "Primeras filas y estructura general de la base.")
-    render_styled_table(df.head(80), height=460, key_prefix="preview")
-    missing_by_column = (
-        df.isna()
-        .sum()
-        .reset_index()
-        .rename(columns={"index": "variable", 0: "valores_perdidos"})
-        .sort_values("valores_perdidos", ascending=False)
-    )
-    with st.expander("Valores perdidos por variable"):
-        render_styled_table(missing_by_column, height=300, key_prefix="missing")
-    panel_end()
-
-
-def instructions_tab() -> None:
-    panel_start(
-        "Instrucciones de uso",
-        "Gu\u00eda r\u00e1pida de lo que puedes hacer en cada m\u00f3dulo de la app.",
-    )
-    st.markdown(
-        """
-        <div
-            style="
-                background:#F4D2A4;
-                border:1px solid #F4B21B;
-                border-radius:8px;
-                color:#000031;
-                font-size:0.88rem;
-                margin-top:0.8rem;
-                padding:0.85rem 1rem;
-            "
-        >
-            Sugerencia de flujo: carga la base en el panel izquierdo, revisa la clasificaci&oacute;n de variables y
-            luego entra al m&oacute;dulo que necesites para explorar, tabular o exportar resultados.
-        </div>
-        <div
-            style="
-                display:grid;
-                grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-                gap:0.9rem;
-                margin-top:0.9rem;
-            "
-        >
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Carga y clasificaci&oacute;n</h4>
-                <p>Desde el panel izquierdo subes la base y confirmas qu&eacute; variables son continuas o categ&oacute;ricas.</p>
-                <ul>
-                    <li>Carga archivos CSV, XLSX o XLS.</li>
-                    <li>Elige hoja, codificaci&oacute;n o separador si hace falta.</li>
-                    <li>Ajusta manualmente la clasificaci&oacute;n de variables.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Vista previa</h4>
-                <p>Sirve para revisar r&aacute;pidamente las primeras filas del dataset antes de seguir con el an&aacute;lisis.</p>
-                <ul>
-                    <li>Inspecciona las primeras filas de la base cargada.</li>
-                    <li>Revisa valores perdidos por variable.</li>
-                    <li>Confirma nombres de columnas y estructura general del archivo.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Gr&aacute;ficos</h4>
-                <p>Construye visualizaciones personalizadas para an&aacute;lisis e informes.</p>
-                <ul>
-                    <li>Genera barras, histogramas o gr&aacute;ficos de dispersi&oacute;n.</li>
-                    <li>Personaliza t&iacute;tulos, ejes, colores, leyenda y rangos.</li>
-                    <li>Exporta el gr&aacute;fico como PNG cuando est&eacute; disponible.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Tablas cruzadas</h4>
-                <p>Produce tablas masivas entre variables principales y desagregaciones sociodemogr&aacute;ficas.</p>
-                <ul>
-                    <li>Selecciona varias variables principales.</li>
-                    <li>Selecciona varias variables de desagregaci&oacute;n.</li>
-                    <li>Descarga un Excel con una hoja por variable principal.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Continuas</h4>
-                <p>Resume variables num&eacute;ricas con estad&iacute;sticos descriptivos listos para reporte.</p>
-                <ul>
-                    <li>Media, mediana, desviaci&oacute;n est&aacute;ndar y percentiles.</li>
-                    <li>Conteo de v&aacute;lidos y perdidos.</li>
-                    <li>Descarga la tabla en CSV o XLSX.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Categ&oacute;ricas</h4>
-                <p>Revisa frecuencias, porcentajes y valores perdidos por categor&iacute;a.</p>
-                <ul>
-                    <li>Filtra qu&eacute; variables mostrar.</li>
-                    <li>Controla el m&aacute;ximo de categor&iacute;as visibles.</li>
-                    <li>Descarga la tabla en CSV o XLSX.</li>
-                </ul>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    panel_end()
-
-
-def main() -> None:
-    inject_styles()
-    init_state()
-
-    # Landing page completa cuando no hay dataset cargado
-    if st.session_state.df is None:
-        render_landing_page()
-        return
-
-    with st.sidebar:
-        load_controls()
-        raw_df = st.session_state.raw_df
-        if raw_df is None and st.session_state.df is not None:
-            raw_df = st.session_state.df
-            st.session_state.raw_df = raw_df
-        if raw_df is not None:
-            missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
-            st.session_state.df = apply_custom_missing_values(raw_df, missing_values)
-        df = st.session_state.df
-        if df is not None:
-            continuous_vars, categorical_vars = variable_controls(df)
-        else:
-            continuous_vars, categorical_vars = [], []
-
-    render_app_header("Exploración descriptiva modular")
-
-    df = st.session_state.df
-    if df is None:
-        render_empty_state()
-        return
-
-    selected_continuous, selected_categorical = continuous_vars, categorical_vars
-    overview_metrics(df, selected_continuous, selected_categorical)
-
-    tables = {
-        "continuas": continuous_summary(df, selected_continuous),
-        "categoricas": categorical_summary(df, selected_categorical, max_levels=30),
-    }
-
-    tab_instructions, tab_preview, tab_graphs, tab_cross, tab_cont, tab_cat = st.tabs(
-        ["Instrucciones", "Vista previa", "Gráficos", "Tablas cruzadas", "Continuas", "Categóricas"]
-    )
-
-    with tab_instructions:
-        instructions_tab()
-    with tab_preview:
-        preview_tab(df)
-    with tab_graphs:
-        charts_tab(df, selected_continuous, selected_categorical)
-    with tab_cross:
-        cross = mass_crosstab_tab(df, selected_categorical)
-        if not cross.empty:
-            tables["tabla_cruzada"] = cross
-    with tab_cont:
-        tables["continuas"] = continuous_tab(df, selected_continuous)
-    with tab_cat:
-        tables["categoricas"] = categorical_tab(df, selected_categorical)
-
-
-if __name__ == "__main__":
-    main()
+            tables_to_excel_bytes(avail
