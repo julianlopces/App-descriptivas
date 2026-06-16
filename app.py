@@ -76,6 +76,15 @@ def inject_sidebar_dark_css() -> None:
     st.markdown(
         f"""
         <style>
+        /* Fondo plomo claro para el área de contenido principal */
+        .stApp, [data-testid="stAppViewContainer"] {{
+            background-color: #F8FAFC !important;
+        }}
+        [data-testid="stHeader"], header, .stAppHeader {{
+            background-color: #F8FAFC !important;
+            background: #F8FAFC !important;
+            border-bottom: none !important;
+        }}
         [data-testid="stSidebar"] {{
             background-color: {primary} !important;
             border-right: 1px solid rgba(255,255,255,0.10) !important;
@@ -1940,8 +1949,6 @@ def main() -> None:
             continuous_vars, categorical_vars = variable_controls(df)
         else:
             continuous_vars, categorical_vars = [], []
-
-    render_app_header("Exploración descriptiva modular")
 
     df = st.session_state.df
     if df is None:
