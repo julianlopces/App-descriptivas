@@ -851,29 +851,23 @@ def render_landing_page() -> None:
             color: #1E293B !important;
             font-weight: 500 !important;
         }}
+        /* Icono de tabla: filter garantiza blanco sin importar estilos inline del SVG */
+        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] {{
+            filter: brightness(0) invert(1) !important;
+        }}
+        /* Fallback con selectores directos */
         [data-testid="stFileUploaderFileData"] div svg,
         [data-testid="stFileUploaderFileData"] svg,
-        .stFileUploader [data-testid="stFileUploaderFileData"] svg {{
-            fill: #FFFFFF !important;
-            color: #FFFFFF !important;
-            stroke: #FFFFFF !important;
-        }}
-        /* Icono de tabla: forzar blanco en todos los elementos vectoriales */
-        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"],
-        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] * {{
-            color: #FFFFFF !important;
-        }}
         [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg,
         [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg *,
         [data-testid="stFileUploaderFileData"] svg path,
         [data-testid="stFileUploaderFileData"] svg rect,
         [data-testid="stFileUploaderFileData"] svg line,
-        [data-testid="stFileUploaderFileData"] svg circle,
-        [data-testid="stFileUploaderFileData"] svg polygon,
-        [data-testid="stFileUploaderFileData"] svg * {{
-            stroke: #FFFFFF !important;
+        [data-testid="stFileUploaderFileData"] svg *,
+        .stFileUploader [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg path {{
             fill: #FFFFFF !important;
-            stroke-width: 1.5 !important;
+            stroke: #FFFFFF !important;
+            color: #FFFFFF !important;
         }}
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
