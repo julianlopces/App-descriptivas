@@ -830,20 +830,27 @@ def render_landing_page() -> None:
         /* ── Chip del archivo cargado ────────────────────────────────── */
         [data-testid="stFileUploaderFile"],
         [data-testid="stUploadedFile"] {{
-            background: rgba(255,255,255,0.14) !important;
-            border: 1px solid rgba(255,255,255,0.30) !important;
+            background: #FFFFFF !important;
+            border: 1px solid rgba(255,255,255,0.50) !important;
             border-radius: 8px !important;
         }}
         [data-testid="stFileUploaderFileName"],
         [data-testid="stFileUploaderFileSize"],
         [data-testid="stFileUploaderFile"] *,
-        [data-testid="stUploadedFile"] * {{
-            color: #FFFFFF !important;
+        [data-testid="stUploadedFile"] *,
+        .stFileUploader span,
+        .stFileUploader p,
+        .stFileUploader small {{
+            color: #1E293B !important;
         }}
         [data-testid="stFileUploaderFile"] button,
         [data-testid="stUploadedFile"] button {{
             background: transparent !important;
             border: none !important;
+        }}
+        .stFileUploader button svg {{
+            fill: #1E293B !important;
+            color: #1E293B !important;
         }}
 
         /* ── Widget labels (etiquetas de todos los inputs) ───────────── */
@@ -954,7 +961,7 @@ def render_landing_page() -> None:
             "Arrastra tu base de datos aquí o haz clic para buscar (.xlsx, .csv)",
             type=["csv", "xlsx", "xls"],
             accept_multiple_files=False,
-            label_visibility="collapsed",
+            label_visibility="visible",
         )
 
         # Detectar tipo de archivo para mostrar opciones correctas
