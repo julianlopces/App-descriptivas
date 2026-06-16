@@ -815,12 +815,12 @@ def render_landing_page() -> None:
             padding: 2.5rem !important;
             text-align: center !important;
         }}
-        /* Ocultar textos nativos laterales de Streamlit */
-        .stFileUploader > section > div {{
+        /* Ocultar SOLO el texto nativo de límite (e.g. "200MB per file") — NO el bloque del archivo */
+        .stFileUploader > section > div [data-testid="stMarkdownContainer"] {{
             display: none !important;
         }}
-        /* Texto superior: encima del botón */
-        .stFileUploader > section::before {{
+        /* Texto superior en reposo: solo cuando NO hay archivo cargado */
+        .stFileUploader > section:not(:has([data-testid="stFileUploaderFileData"]))::before {{
             content: "Arrastre la bases de datos aquí o haga click para buscar" !important;
             display: block !important;
             margin-bottom: 15px !important;
@@ -828,14 +828,32 @@ def render_landing_page() -> None:
             font-size: 1rem !important;
             font-weight: 500 !important;
         }}
-        /* Texto inferior: debajo del botón */
-        .stFileUploader > section::after {{
+        /* Texto inferior en reposo: solo cuando NO hay archivo cargado */
+        .stFileUploader > section:not(:has([data-testid="stFileUploaderFileData"]))::after {{
             content: "Tamaño máximo: 200 MB" !important;
             display: block !important;
             margin-top: 15px !important;
             color: #1E293B !important;
             font-size: 0.85rem !important;
             font-weight: 400 !important;
+        }}
+        /* ── Pastilla del archivo cargado ────────────────────────────── */
+        [data-testid="stFileUploaderFileData"] {{
+            display: flex !important;
+            background-color: #FFFFFF !important;
+            padding: 8px 12px !important;
+            border-radius: 4px !important;
+            margin-top: 10px !important;
+        }}
+        [data-testid="stFileUploaderFileName"],
+        [data-testid="stFileUploaderFileData"] span,
+        [data-testid="stFileUploaderFileData"] p {{
+            color: #1E293B !important;
+            font-weight: 500 !important;
+        }}
+        [data-testid="stFileUploaderFileData"] svg {{
+            fill: #1E293B !important;
+            color: #1E293B !important;
         }}
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
