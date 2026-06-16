@@ -799,10 +799,10 @@ def render_landing_page() -> None:
             margin: 0 auto !important;
         }}
 
-        /* ── Dropzone del file uploader ──────────────────────────────── */
+        /* ── Dropzone: fondo plomo claro, borde continuo, texto oscuro ── */
         [data-testid="stFileUploaderDropzone"] {{
-            background: rgba(200,210,230,0.13) !important;
-            border: 2px dashed rgba(255,255,255,0.45) !important;
+            background: #F1F5F9 !important;
+            border: 1px solid #94A3B8 !important;
             border-radius: 12px !important;
             padding: 2rem 1rem !important;
         }}
@@ -810,28 +810,28 @@ def render_landing_page() -> None:
         [data-testid="stFileUploaderDropzone"] small,
         [data-testid="stFileUploaderDropzone"] span,
         [data-testid="stFileUploaderDropzone"] div {{
-            color: #FFFFFF !important;
+            color: #1E293B !important;
         }}
         [data-testid="stFileUploaderDropzone"] svg {{
-            color: #FFFFFF !important;
+            color: #1E293B !important;
             fill: currentColor !important;
             stroke: currentColor !important;
         }}
         /* Botón "Browse files" dentro del dropzone */
         [data-testid="stFileUploaderDropzone"] button {{
-            background: rgba(255,255,255,0.15) !important;
-            border: 1px solid rgba(255,255,255,0.40) !important;
-            color: #FFFFFF !important;
+            background: #FFFFFF !important;
+            border: 1px solid #94A3B8 !important;
+            color: #1E293B !important;
         }}
         [data-testid="stFileUploaderDropzone"] button * {{
-            color: #FFFFFF !important;
+            color: #1E293B !important;
         }}
 
-        /* ── Chip del archivo cargado ────────────────────────────────── */
+        /* ── Chip del archivo cargado: fondo blanco, texto oscuro ─────── */
         [data-testid="stFileUploaderFile"],
         [data-testid="stUploadedFile"] {{
             background: #FFFFFF !important;
-            border: 1px solid rgba(255,255,255,0.50) !important;
+            border: 1px solid #CBD5E1 !important;
             border-radius: 8px !important;
         }}
         [data-testid="stFileUploaderFileName"],
