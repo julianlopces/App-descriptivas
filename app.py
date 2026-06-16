@@ -88,14 +88,25 @@ def inject_sidebar_dark_css() -> None:
             color: rgba(255,255,255,0.55) !important;
             letter-spacing: 0.06em;
         }}
-        /* Dataset card */
+        /* Dataset card — fondo plomo claro con texto oscuro */
         [data-testid="stSidebar"] .dataset-card {{
-            background: rgba(255,255,255,0.08) !important;
-            border-color: rgba(255,255,255,0.20) !important;
+            background: #E2E8F0 !important;
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 6px !important;
+            padding: 10px 12px !important;
         }}
         [data-testid="stSidebar"] .dataset-card .file-name,
         [data-testid="stSidebar"] .dataset-card .file-meta {{
-            color: #FFFFFF !important;
+            color: #1E293B !important;
+        }}
+        /* Reducir espacio entre heading "CARGAR NUEVO ARCHIVO" y el uploader */
+        [data-testid="stSidebar"] .side-heading {{
+            margin-bottom: 0px !important;
+            padding-bottom: 0px !important;
+        }}
+        [data-testid="stSidebar"] .stFileUploader {{
+            margin-top: 0px !important;
+            padding-top: 0px !important;
         }}
         /* Divisor */
         [data-testid="stSidebar"] hr,
