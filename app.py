@@ -858,6 +858,15 @@ def render_landing_page() -> None:
             color: #FFFFFF !important;
             stroke: #FFFFFF !important;
         }}
+        /* Líneas, bordes y celdas del icono de tabla dentro del cuadro azul */
+        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg,
+        [data-testid="stFileUploaderFileData"] svg path,
+        [data-testid="stFileUploaderFileData"] svg rect,
+        [data-testid="stFileUploaderFileData"] svg line {{
+            stroke: #FFFFFF !important;
+            fill: #FFFFFF !important;
+            stroke-width: 1.5 !important;
+        }}
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
         [data-testid="stFileUploaderDropzone"] span,
