@@ -950,7 +950,7 @@ def render_landing_page() -> None:
         /* ── Pastilla del archivo cargado ────────────────────────────── */
         [data-testid="stFileUploaderFileData"] {{
             display: flex !important;
-            background-color: #FFFFFF !important;
+            background-color: #E2E8F0 !important;
             padding: 8px 12px !important;
             border-radius: 4px !important;
             margin-top: 10px !important;
