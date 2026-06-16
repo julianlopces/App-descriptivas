@@ -799,12 +799,43 @@ def render_landing_page() -> None:
             margin: 0 auto !important;
         }}
 
-        /* ── Dropzone: fondo plomo claro, borde continuo, texto oscuro ── */
+        /* ── Dropzone: fondo plomo claro, borde continuo ────────────── */
         [data-testid="stFileUploaderDropzone"] {{
             background: #F1F5F9 !important;
             border: 1px solid #94A3B8 !important;
             border-radius: 12px !important;
-            padding: 2rem 1rem !important;
+            padding: 0 !important;
+        }}
+        /* Layout vertical centrado */
+        .stFileUploader > section {{
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 2.5rem !important;
+            text-align: center !important;
+        }}
+        /* Ocultar textos nativos laterales de Streamlit */
+        .stFileUploader > section > div {{
+            display: none !important;
+        }}
+        /* Texto superior: encima del botón */
+        .stFileUploader > section::before {{
+            content: "Arrastre la bases de datos aquí o haga click para buscar" !important;
+            display: block !important;
+            margin-bottom: 15px !important;
+            color: #1E293B !important;
+            font-size: 1rem !important;
+            font-weight: 500 !important;
+        }}
+        /* Texto inferior: debajo del botón */
+        .stFileUploader > section::after {{
+            content: "Tamaño máximo: 200 MB" !important;
+            display: block !important;
+            margin-top: 15px !important;
+            color: #1E293B !important;
+            font-size: 0.85rem !important;
+            font-weight: 400 !important;
         }}
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
@@ -817,7 +848,7 @@ def render_landing_page() -> None:
             fill: currentColor !important;
             stroke: currentColor !important;
         }}
-        /* Botón "Browse files" dentro del dropzone */
+        /* Botón "Browse files" */
         [data-testid="stFileUploaderDropzone"] button {{
             background: #FFFFFF !important;
             border: 1px solid #94A3B8 !important;
