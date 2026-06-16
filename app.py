@@ -858,11 +858,19 @@ def render_landing_page() -> None:
             color: #FFFFFF !important;
             stroke: #FFFFFF !important;
         }}
-        /* Líneas, bordes y celdas del icono de tabla dentro del cuadro azul */
+        /* Icono de tabla: forzar blanco en todos los elementos vectoriales */
+        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"],
+        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] * {{
+            color: #FFFFFF !important;
+        }}
         [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg,
+        [data-testid="stFileUploaderFileData"] div[data-testid="stIcon"] svg *,
         [data-testid="stFileUploaderFileData"] svg path,
         [data-testid="stFileUploaderFileData"] svg rect,
-        [data-testid="stFileUploaderFileData"] svg line {{
+        [data-testid="stFileUploaderFileData"] svg line,
+        [data-testid="stFileUploaderFileData"] svg circle,
+        [data-testid="stFileUploaderFileData"] svg polygon,
+        [data-testid="stFileUploaderFileData"] svg * {{
             stroke: #FFFFFF !important;
             fill: #FFFFFF !important;
             stroke-width: 1.5 !important;
