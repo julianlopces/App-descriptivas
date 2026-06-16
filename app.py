@@ -370,9 +370,10 @@ def load_controls() -> None:
         unsafe_allow_html=True,
     )
     st.divider()
-    st.markdown('<div class="side-heading">Dataset</div>', unsafe_allow_html=True)
+    st.markdown('<div class="side-heading">Dataset actual</div>', unsafe_allow_html=True)
     dataset_card(st.session_state.df)
 
+    st.markdown('<div class="side-heading">Cargar nuevo archivo</div>', unsafe_allow_html=True)
     uploaded = st.file_uploader(
         "Cargar archivo",
         type=["csv", "xlsx", "xls"],
