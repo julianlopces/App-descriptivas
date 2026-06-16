@@ -851,9 +851,12 @@ def render_landing_page() -> None:
             color: #1E293B !important;
             font-weight: 500 !important;
         }}
-        [data-testid="stFileUploaderFileData"] svg {{
-            fill: #1E293B !important;
-            color: #1E293B !important;
+        [data-testid="stFileUploaderFileData"] div svg,
+        [data-testid="stFileUploaderFileData"] svg,
+        .stFileUploader [data-testid="stFileUploaderFileData"] svg {{
+            fill: #FFFFFF !important;
+            color: #FFFFFF !important;
+            stroke: #FFFFFF !important;
         }}
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
