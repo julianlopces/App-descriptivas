@@ -1786,4 +1786,171 @@ def export_tab(tables: dict[str, pd.DataFrame]) -> None:
 
 
 def preview_tab(df: pd.DataFrame) -> None:
-    panel_start("Vista previa del dataset", "Primera
+    panel_start("Vista previa del dataset", "Primeras filas y estructura general de la base.")
+    render_styled_table(df.head(80), height=460, key_prefix="preview")
+    missing_by_column = (
+        df.isna()
+        .sum()
+        .reset_index()
+        .rename(columns={"index": "variable", 0: "valores_perdidos"})
+        .sort_values("valores_perdidos", ascending=False)
+    )
+    with st.expander("Valores perdidos por variable"):
+        render_styled_table(missing_by_column, height=300, key_prefix="missing")
+    panel_end()
+
+
+def instructions_tab() -> None:
+    panel_start(
+        "Instrucciones de uso",
+        "Gu\u00eda r\u00e1pida de lo que puedes hacer en cada m\u00f3dulo de la app.",
+    )
+    st.markdown(
+        """
+        <div
+            style="
+                background:#F4D2A4;
+                border:1px solid #F4B21B;
+                border-radius:8px;
+                color:#000031;
+                font-size:0.88rem;
+                margin-top:0.8rem;
+                padding:0.85rem 1rem;
+            "
+        >
+            Sugerencia de flujo: carga la base en el panel izquierdo, revisa la clasificaci&oacute;n de variables y
+            luego entra al m&oacute;dulo que necesites para explorar, tabular o exportar resultados.
+        </div>
+        <div
+            style="
+                display:grid;
+                grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+                gap:0.9rem;
+                margin-top:0.9rem;
+            "
+        >
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
+                <h4>Carga y clasificaci&oacute;n</h4>
+                <p>Desde el panel izquierdo subes la base y confirmas qu&eacute; variables son continuas o categ&oacute;ricas.</p>
+                <ul>
+                    <li>Carga archivos CSV, XLSX o XLS.</li>
+                    <li>Elige hoja, codificaci&oacute;n o separador si hace falta.</li>
+                    <li>Ajusta manualmente la clasificaci&oacute;n de variables.</li>
+                </ul>
+            </div>
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
+                <h4>Vista previa</h4>
+                <p>Sirve para revisar r&aacute;pidamente las primeras filas del dataset antes de seguir con el an&aacute;lisis.</p>
+                <ul>
+                    <li>Inspecciona las primeras filas de la base cargada.</li>
+                    <li>Revisa valores perdidos por variable.</li>
+                    <li>Confirma nombres de columnas y estructura general del archivo.</li>
+                </ul>
+            </div>
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
+                <h4>Gr&aacute;ficos</h4>
+                <p>Construye visualizaciones personalizadas para an&aacute;lisis e informes.</p>
+                <ul>
+                    <li>Genera barras, histogramas o gr&aacute;ficos de dispersi&oacute;n.</li>
+                    <li>Personaliza t&iacute;tulos, ejes, colores, leyenda y rangos.</li>
+                    <li>Exporta el gr&aacute;fico como PNG cuando est&eacute; disponible.</li>
+                </ul>
+            </div>
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
+                <h4>Tablas cruzadas</h4>
+                <p>Produce tablas masivas entre variables principales y desagregaciones sociodemogr&aacute;ficas.</p>
+                <ul>
+                    <li>Selecciona varias variables principales.</li>
+                    <li>Selecciona varias variables de desagregaci&oacute;n.</li>
+                    <li>Descarga un Excel con una hoja por variable principal.</li>
+                </ul>
+            </div>
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
+                <h4>Continuas</h4>
+                <p>Resume variables num&eacute;ricas con estad&iacute;sticos descriptivos listos para reporte.</p>
+                <ul>
+                    <li>Media, mediana, desviaci&oacute;n est&aacute;ndar y percentiles.</li>
+                    <li>Conteo de v&aacute;lidos y perdidos.</li>
+                    <li>Descarga la tabla en CSV o XLSX.</li>
+                </ul>
+            </div>
+            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
+                <h4>Categ&oacute;ricas</h4>
+                <p>Revisa frecuencias, porcentajes y valores perdidos por categor&iacute;a.</p>
+                <ul>
+                    <li>Filtra qu&eacute; variables mostrar.</li>
+                    <li>Controla el m&aacute;ximo de categor&iacute;as visibles.</li>
+                    <li>Descarga la tabla en CSV o XLSX.</li>
+                </ul>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    panel_end()
+
+
+def main() -> None:
+    inject_styles()
+    init_state()
+
+    # Landing page completa cuando no hay dataset cargado
+    if st.session_state.df is None:
+        render_landing_page()
+        return
+
+    # Sidebar oscura — solo activa en el dashboard (con dataset cargado)
+    inject_sidebar_dark_css()
+
+    with st.sidebar:
+        load_controls()
+        raw_df = st.session_state.raw_df
+        if raw_df is None and st.session_state.df is not None:
+            raw_df = st.session_state.df
+            st.session_state.raw_df = raw_df
+        if raw_df is not None:
+            missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
+            st.session_state.df = apply_custom_missing_values(raw_df, missing_values)
+        df = st.session_state.df
+        if df is not None:
+            continuous_vars, categorical_vars = variable_controls(df)
+        else:
+            continuous_vars, categorical_vars = [], []
+
+    render_app_header("Exploración descriptiva modular")
+
+    df = st.session_state.df
+    if df is None:
+        render_empty_state()
+        return
+
+    selected_continuous, selected_categorical = continuous_vars, categorical_vars
+    overview_metrics(df, selected_continuous, selected_categorical)
+
+    tables = {
+        "continuas": continuous_summary(df, selected_continuous),
+        "categoricas": categorical_summary(df, selected_categorical, max_levels=30),
+    }
+
+    tab_instructions, tab_preview, tab_graphs, tab_cross, tab_cont, tab_cat = st.tabs(
+        ["Instrucciones", "Vista previa", "Gráficos", "Tablas cruzadas", "Continuas", "Categóricas"]
+    )
+
+    with tab_instructions:
+        instructions_tab()
+    with tab_preview:
+        preview_tab(df)
+    with tab_graphs:
+        charts_tab(df, selected_continuous, selected_categorical)
+    with tab_cross:
+        cross = mass_crosstab_tab(df, selected_categorical)
+        if not cross.empty:
+            tables["tabla_cruzada"] = cross
+    with tab_cont:
+        tables["continuas"] = continuous_tab(df, selected_continuous)
+    with tab_cat:
+        tables["categoricas"] = categorical_tab(df, selected_categorical)
+
+
+if __name__ == "__main__":
+    main()
