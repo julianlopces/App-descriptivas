@@ -762,13 +762,23 @@ def render_empty_state() -> None:
 
 def render_landing_page() -> None:
     """Full-screen landing shown only when no dataset is loaded."""
-    logo_data_uri = get_logo_data_uri()
     primary = INSTITUTIONAL_COLORS["primary"]  # #020F50
 
-    # --- CSS condicional: fondo oscuro + sidebar oculto ---
+    # Logo blanco para fondo oscuro
+    white_logo_path = PROJECT_ROOT / "media" / "Equilibrium-Logo-Blanco.png"
+    if white_logo_path.exists():
+        encoded = base64.b64encode(white_logo_path.read_bytes()).decode("ascii")
+        logo_data_uri = f"data:image/png;base64,{encoded}"
+    else:
+        logo_data_uri = get_logo_data_uri()
+
+    # ------------------------------------------------------------------ #
+    # CSS condicional — solo activo mientras no hay dataset               #
+    # ------------------------------------------------------------------ #
     st.markdown(
         f"""
         <style>
+        /* Fondo oscuro institucional */
         .stApp {{
             background-color: {primary} !important;
         }}
@@ -776,26 +786,30 @@ def render_landing_page() -> None:
             background: {primary} !important;
             border-bottom: 1px solid rgba(255,255,255,0.08) !important;
         }}
+        /* Ocultar sidebar y botón de colapso */
         [data-testid="stSidebar"],
         [data-testid="collapsedControl"],
         section[data-testid="stSidebarCollapsedControl"] {{
             display: none !important;
         }}
+        /* Centrar contenido */
         .block-container {{
             padding-top: 1.5rem !important;
             max-width: 860px !important;
             margin: 0 auto !important;
         }}
-        /* Uploader dropzone sobre fondo oscuro */
+
+        /* ── Dropzone del file uploader ──────────────────────────────── */
         [data-testid="stFileUploaderDropzone"] {{
-            background: rgba(255,255,255,0.07) !important;
-            border: 2px dashed rgba(255,255,255,0.30) !important;
-            border-radius: 10px !important;
+            background: rgba(200,210,230,0.13) !important;
+            border: 2px dashed rgba(255,255,255,0.45) !important;
+            border-radius: 12px !important;
+            padding: 2rem 1rem !important;
         }}
-        [data-testid="stFileUploaderDropzone"] *,
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
-        [data-testid="stFileUploaderDropzone"] span {{
+        [data-testid="stFileUploaderDropzone"] span,
+        [data-testid="stFileUploaderDropzone"] div {{
             color: #FFFFFF !important;
         }}
         [data-testid="stFileUploaderDropzone"] svg {{
@@ -803,60 +817,137 @@ def render_landing_page() -> None:
             fill: currentColor !important;
             stroke: currentColor !important;
         }}
-        /* Expander y selectbox sobre fondo oscuro */
-        [data-testid="stExpander"] details,
-        [data-testid="stExpander"] details summary,
-        [data-testid="stExpander"] summary * {{
-            color: rgba(255,255,255,0.80) !important;
+        /* Botón "Browse files" dentro del dropzone */
+        [data-testid="stFileUploaderDropzone"] button {{
+            background: rgba(255,255,255,0.15) !important;
+            border: 1px solid rgba(255,255,255,0.40) !important;
+            color: #FFFFFF !important;
         }}
-        [data-testid="stExpander"] details summary svg {{
-            color: rgba(255,255,255,0.80) !important;
+        [data-testid="stFileUploaderDropzone"] button * {{
+            color: #FFFFFF !important;
+        }}
+
+        /* ── Chip del archivo cargado ────────────────────────────────── */
+        [data-testid="stFileUploaderFile"],
+        [data-testid="stUploadedFile"] {{
+            background: rgba(255,255,255,0.14) !important;
+            border: 1px solid rgba(255,255,255,0.30) !important;
+            border-radius: 8px !important;
+        }}
+        [data-testid="stFileUploaderFileName"],
+        [data-testid="stFileUploaderFileSize"],
+        [data-testid="stFileUploaderFile"] *,
+        [data-testid="stUploadedFile"] * {{
+            color: #FFFFFF !important;
+        }}
+        [data-testid="stFileUploaderFile"] button,
+        [data-testid="stUploadedFile"] button {{
+            background: transparent !important;
+            border: none !important;
+        }}
+
+        /* ── Widget labels (etiquetas de todos los inputs) ───────────── */
+        [data-testid="stWidgetLabel"],
+        [data-testid="stWidgetLabel"] * {{
+            color: rgba(255,255,255,0.85) !important;
+        }}
+
+        /* ── Expander "Opciones de lectura" ──────────────────────────── */
+        [data-testid="stExpander"] details,
+        [data-testid="stExpander"] details summary {{
+            background: rgba(255,255,255,0.07) !important;
+            border-color: rgba(255,255,255,0.20) !important;
+            border-radius: 8px !important;
+        }}
+        [data-testid="stExpander"] summary *,
+        [data-testid="stExpander"] summary p,
+        [data-testid="stExpander"] summary span {{
+            color: rgba(255,255,255,0.90) !important;
+        }}
+        [data-testid="stExpander"] summary svg {{
+            color: rgba(255,255,255,0.90) !important;
             fill: currentColor !important;
             stroke: currentColor !important;
         }}
-        [data-testid="stExpander"] [data-baseweb="select"] > div,
-        [data-testid="stExpander"] [data-baseweb="select"] * {{
-            background: rgba(255,255,255,0.10) !important;
-            color: #FFFFFF !important;
-            border-color: rgba(255,255,255,0.20) !important;
+        /* Contenido abierto del expander */
+        [data-testid="stExpander"] details > div {{
+            background: rgba(255,255,255,0.05) !important;
+            border-color: rgba(255,255,255,0.15) !important;
         }}
-        [data-testid="stWidgetLabel"],
-        [data-testid="stWidgetLabel"] * {{
-            color: rgba(255,255,255,0.80) !important;
+
+        /* ── Selectbox cerrado (campo visible) ───────────────────────── */
+        [data-testid="stExpander"] [data-baseweb="select"] > div {{
+            background: rgba(255,255,255,0.12) !important;
+            border-color: rgba(255,255,255,0.30) !important;
+            border-radius: 6px !important;
         }}
-        /* Archivo cargado en uploader */
-        [data-testid="stFileUploaderFileName"],
-        [data-testid="stFileUploaderFileSize"],
-        [data-testid="stUploadedFile"] * {{
+        /* Texto del valor seleccionado */
+        [data-testid="stExpander"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p,
+        [data-testid="stExpander"] [data-baseweb="select"] span,
+        [data-testid="stExpander"] [data-baseweb="select"] input,
+        [data-testid="stExpander"] [data-baseweb="select"] div[class*="placeholder"] {{
             color: #FFFFFF !important;
+        }}
+        /* Flecha del selector */
+        [data-testid="stExpander"] [data-baseweb="select"] svg {{
+            color: #FFFFFF !important;
+            fill: currentColor !important;
+        }}
+
+        /* ── Dropdown abierto (popover/menú de opciones) ─────────────── */
+        /* Fondo blanco con texto oscuro para máximo contraste           */
+        [data-baseweb="popover"] [data-baseweb="menu"],
+        [data-baseweb="popover"] ul {{
+            background: #FFFFFF !important;
+        }}
+        [data-baseweb="popover"] [role="option"],
+        [data-baseweb="popover"] [role="option"] * {{
+            background: #FFFFFF !important;
+            color: {primary} !important;
+        }}
+        [data-baseweb="popover"] [role="option"]:hover,
+        [data-baseweb="popover"] [role="option"][aria-selected="true"] {{
+            background: rgba(2,15,80,0.08) !important;
         }}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # --- Logo arriba a la derecha ---
+    # ------------------------------------------------------------------ #
+    # Logo arriba a la derecha                                            #
+    # ------------------------------------------------------------------ #
     if logo_data_uri:
-        _, col_logo = st.columns([4, 1])
+        _, col_logo = st.columns([3, 1])
         with col_logo:
             st.markdown(
-                f'<img src="{logo_data_uri}" style="width:180px; display:block; margin-left:auto;" alt="Equilibrium">',
+                f'<img src="{logo_data_uri}" '
+                f'style="width:200px; display:block; margin-left:auto; margin-top:0.5rem;" '
+                f'alt="Equilibrium">',
                 unsafe_allow_html=True,
             )
 
-    # --- Título centrado ---
+    # ------------------------------------------------------------------ #
+    # Título centrado                                                      #
+    # ------------------------------------------------------------------ #
     st.markdown(
         """
         <div style="text-align:center; margin:1.5rem 0 2rem;">
-            <h1 style="color:#FFFFFF; font-size:3rem; font-weight:800; margin:0 0 0.4rem;">QuanTi Stats</h1>
+            <h1 style="color:#FFFFFF; font-size:3rem; font-weight:800; margin:0 0 0.4rem;">
+                QuanTi Stats
+            </h1>
             <p style="color:rgba(255,255,255,0.65); font-size:0.82rem; letter-spacing:0.14em;
-                      text-transform:uppercase; margin:0;">Creado por Equilibrium BDC</p>
+                      text-transform:uppercase; margin:0;">
+                Creado por Equilibrium BDC
+            </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # --- Tarjeta de carga centrada ---
+    # ------------------------------------------------------------------ #
+    # Tarjeta de carga centrada                                           #
+    # ------------------------------------------------------------------ #
     _, col_card, _ = st.columns([1, 3, 1])
     with col_card:
         uploaded = st.file_uploader(
@@ -866,12 +957,14 @@ def render_landing_page() -> None:
             label_visibility="collapsed",
         )
 
-        suffix = uploaded.name.rsplit(".", 1)[-1].lower() if uploaded else "csv"
+        # Detectar tipo de archivo para mostrar opciones correctas
+        suffix = uploaded.name.rsplit(".", 1)[-1].lower() if uploaded else ""
         sheet_name = None
         csv_encoding = "utf-8"
         csv_separator = "Auto"
 
-        with st.expander("Opciones de lectura", expanded=False):
+        # El expander reacciona reactivamente: Excel → hoja; CSV/otro → encoding+sep
+        with st.expander("Opciones de lectura", expanded=bool(uploaded)):
             if uploaded and suffix in {"xlsx", "xls"}:
                 try:
                     sheets = get_excel_sheets(uploaded)
@@ -915,7 +1008,9 @@ def render_landing_page() -> None:
                 except Exception as exc:
                     st.error(f"No fue posible cargar el archivo: {exc}")
 
-    # --- Footer fijo ---
+    # ------------------------------------------------------------------ #
+    # Footer fijo                                                         #
+    # ------------------------------------------------------------------ #
     st.markdown(
         """
         <div style="
@@ -1573,110 +1668,4 @@ def instructions_tab() -> None:
                 <ul>
                     <li>Inspecciona las primeras filas de la base cargada.</li>
                     <li>Revisa valores perdidos por variable.</li>
-                    <li>Confirma nombres de columnas y estructura general del archivo.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Gr&aacute;ficos</h4>
-                <p>Construye visualizaciones personalizadas para an&aacute;lisis e informes.</p>
-                <ul>
-                    <li>Genera barras, histogramas o gr&aacute;ficos de dispersi&oacute;n.</li>
-                    <li>Personaliza t&iacute;tulos, ejes, colores, leyenda y rangos.</li>
-                    <li>Exporta el gr&aacute;fico como PNG cuando est&eacute; disponible.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Tablas cruzadas</h4>
-                <p>Produce tablas masivas entre variables principales y desagregaciones sociodemogr&aacute;ficas.</p>
-                <ul>
-                    <li>Selecciona varias variables principales.</li>
-                    <li>Selecciona varias variables de desagregaci&oacute;n.</li>
-                    <li>Descarga un Excel con una hoja por variable principal.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Continuas</h4>
-                <p>Resume variables num&eacute;ricas con estad&iacute;sticos descriptivos listos para reporte.</p>
-                <ul>
-                    <li>Media, mediana, desviaci&oacute;n est&aacute;ndar y percentiles.</li>
-                    <li>Conteo de v&aacute;lidos y perdidos.</li>
-                    <li>Descarga la tabla en CSV o XLSX.</li>
-                </ul>
-            </div>
-            <div style="background:linear-gradient(180deg, #FFFFFF 0%, #F7FAF2 100%); border:1px solid #B6C4E5; border-radius:8px; padding:0.95rem 1rem; box-shadow:0 10px 20px rgba(2, 15, 80, 0.05);">
-                <h4>Categ&oacute;ricas</h4>
-                <p>Revisa frecuencias, porcentajes y valores perdidos por categor&iacute;a.</p>
-                <ul>
-                    <li>Filtra qu&eacute; variables mostrar.</li>
-                    <li>Controla el m&aacute;ximo de categor&iacute;as visibles.</li>
-                    <li>Descarga la tabla en CSV o XLSX.</li>
-                </ul>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    panel_end()
-
-
-def main() -> None:
-    inject_styles()
-    init_state()
-
-    # Landing page completa cuando no hay dataset cargado
-    if st.session_state.df is None:
-        render_landing_page()
-        return
-
-    with st.sidebar:
-        load_controls()
-        raw_df = st.session_state.raw_df
-        if raw_df is None and st.session_state.df is not None:
-            raw_df = st.session_state.df
-            st.session_state.raw_df = raw_df
-        if raw_df is not None:
-            missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
-            st.session_state.df = apply_custom_missing_values(raw_df, missing_values)
-        df = st.session_state.df
-        if df is not None:
-            continuous_vars, categorical_vars = variable_controls(df)
-        else:
-            continuous_vars, categorical_vars = [], []
-
-    render_app_header("Exploración descriptiva modular")
-
-    df = st.session_state.df
-    if df is None:
-        render_empty_state()
-        return
-
-    selected_continuous, selected_categorical = continuous_vars, categorical_vars
-    overview_metrics(df, selected_continuous, selected_categorical)
-
-    tables = {
-        "continuas": continuous_summary(df, selected_continuous),
-        "categoricas": categorical_summary(df, selected_categorical, max_levels=30),
-    }
-
-    tab_instructions, tab_preview, tab_graphs, tab_cross, tab_cont, tab_cat = st.tabs(
-        ["Instrucciones", "Vista previa", "Gráficos", "Tablas cruzadas", "Continuas", "Categóricas"]
-    )
-
-    with tab_instructions:
-        instructions_tab()
-    with tab_preview:
-        preview_tab(df)
-    with tab_graphs:
-        charts_tab(df, selected_continuous, selected_categorical)
-    with tab_cross:
-        cross = mass_crosstab_tab(df, selected_categorical)
-        if not cross.empty:
-            tables["tabla_cruzada"] = cross
-    with tab_cont:
-        tables["continuas"] = continuous_tab(df, selected_continuous)
-    with tab_cat:
-        tables["categoricas"] = categorical_tab(df, selected_categorical)
-
-
-if __name__ == "__main__":
-    main()
+             
