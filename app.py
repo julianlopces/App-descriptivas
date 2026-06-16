@@ -99,14 +99,23 @@ def inject_sidebar_dark_css() -> None:
         [data-testid="stSidebar"] .dataset-card .file-meta {{
             color: #1E293B !important;
         }}
-        /* Reducir espacio entre heading "CARGAR NUEVO ARCHIVO" y el uploader */
+        /* Espaciado calibrado por elemento-destino */
+        /* Dataset actual: margen entre heading y card */
+        [data-testid="stSidebar"] .dataset-card {{
+            margin-top: 8px !important;
+        }}
+        /* Cargar nuevo archivo: heading pegado al uploader */
         [data-testid="stSidebar"] .side-heading {{
             margin-bottom: 0px !important;
             padding-bottom: 0px !important;
         }}
         [data-testid="stSidebar"] .stFileUploader {{
-            margin-top: 0px !important;
+            margin-top: -8px !important;
             padding-top: 0px !important;
+        }}
+        /* Ajustes de lectura: espacio antes del expander "Ajustar tipos" */
+        [data-testid="stSidebar"] [data-testid="stExpander"] {{
+            margin-top: 12px !important;
         }}
         /* Divisor */
         [data-testid="stSidebar"] hr,
