@@ -799,12 +799,43 @@ def render_landing_page() -> None:
             margin: 0 auto !important;
         }}
 
-        /* ── Dropzone: fondo plomo claro, borde continuo, texto oscuro ── */
+        /* ── Dropzone: fondo plomo claro, borde continuo ────────────── */
         [data-testid="stFileUploaderDropzone"] {{
             background: #F1F5F9 !important;
             border: 1px solid #94A3B8 !important;
             border-radius: 12px !important;
-            padding: 2rem 1rem !important;
+            padding: 0 !important;
+        }}
+        /* Layout vertical centrado */
+        .stFileUploader > section {{
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 2.5rem !important;
+            text-align: center !important;
+        }}
+        /* Ocultar textos nativos laterales de Streamlit */
+        .stFileUploader > section > div {{
+            display: none !important;
+        }}
+        /* Texto superior: encima del botón */
+        .stFileUploader > section::before {{
+            content: "Arrastre la bases de datos aquí o haga click para buscar" !important;
+            display: block !important;
+            margin-bottom: 15px !important;
+            color: #1E293B !important;
+            font-size: 1rem !important;
+            font-weight: 500 !important;
+        }}
+        /* Texto inferior: debajo del botón */
+        .stFileUploader > section::after {{
+            content: "Tamaño máximo: 200 MB" !important;
+            display: block !important;
+            margin-top: 15px !important;
+            color: #1E293B !important;
+            font-size: 0.85rem !important;
+            font-weight: 400 !important;
         }}
         [data-testid="stFileUploaderDropzone"] p,
         [data-testid="stFileUploaderDropzone"] small,
@@ -817,7 +848,7 @@ def render_landing_page() -> None:
             fill: currentColor !important;
             stroke: currentColor !important;
         }}
-        /* Botón "Browse files" dentro del dropzone */
+        /* Botón "Browse files" */
         [data-testid="stFileUploaderDropzone"] button {{
             background: #FFFFFF !important;
             border: 1px solid #94A3B8 !important;
@@ -1743,47 +1774,4 @@ def main() -> None:
             st.session_state.raw_df = raw_df
         if raw_df is not None:
             missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
-            st.session_state.df = apply_custom_missing_values(raw_df, missing_values)
-        df = st.session_state.df
-        if df is not None:
-            continuous_vars, categorical_vars = variable_controls(df)
-        else:
-            continuous_vars, categorical_vars = [], []
-
-    render_app_header("Exploración descriptiva modular")
-
-    df = st.session_state.df
-    if df is None:
-        render_empty_state()
-        return
-
-    selected_continuous, selected_categorical = continuous_vars, categorical_vars
-    overview_metrics(df, selected_continuous, selected_categorical)
-
-    tables = {
-        "continuas": continuous_summary(df, selected_continuous),
-        "categoricas": categorical_summary(df, selected_categorical, max_levels=30),
-    }
-
-    tab_instructions, tab_preview, tab_graphs, tab_cross, tab_cont, tab_cat = st.tabs(
-        ["Instrucciones", "Vista previa", "Gráficos", "Tablas cruzadas", "Continuas", "Categóricas"]
-    )
-
-    with tab_instructions:
-        instructions_tab()
-    with tab_preview:
-        preview_tab(df)
-    with tab_graphs:
-        charts_tab(df, selected_continuous, selected_categorical)
-    with tab_cross:
-        cross = mass_crosstab_tab(df, selected_categorical)
-        if not cross.empty:
-            tables["tabla_cruzada"] = cross
-    with tab_cont:
-        tables["continuas"] = continuous_tab(df, selected_continuous)
-    with tab_cat:
-        tables["categoricas"] = categorical_tab(df, selected_categorical)
-
-
-if __name__ == "__main__":
-    main()
+            st.session_state.df = 
