@@ -1780,4 +1780,5 @@ def main() -> None:
         tables["categoricas"] = categorical_tab(df, selected_categorical)
 
 
-if __name__ == "__main__
+if __name__ == "__main__":
+    main()
