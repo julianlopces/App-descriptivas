@@ -87,6 +87,12 @@ def inject_sidebar_dark_css() -> None:
             border-bottom: none !important;
         }}
         [data-testid="stSidebar"] {{
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }}
+        [data-testid="stSidebar"] {{
             background-color: {primary} !important;
             border-right: 1px solid rgba(255,255,255,0.10) !important;
         }}
@@ -353,6 +359,21 @@ def apply_custom_missing_values(df: pd.DataFrame, missing_values: list[str]) -> 
             cleaned.loc[mask, column] = pd.NA
 
     return cleaned
+
+
+def ensure_variable_type_state(df: pd.DataFrame) -> None:
+    all_columns = set(df.columns)
+    continuous = [column for column in st.session_state.continuous_vars if column in all_columns]
+    categorical = [column for column in st.session_state.categorical_vars if column in all_columns]
+
+    if continuous or categorical:
+        st.session_state.continuous_vars = continuous
+        st.session_state.categorical_vars = categorical
+        return
+
+    detected = detect_variable_types(df)
+    st.session_state.continuous_vars = detected["continuous"]
+    st.session_state.categorical_vars = detected["categorical"]
 
 
 def excel_percent_format(max_decimals: int) -> str:
@@ -2259,6 +2280,7 @@ def main() -> None:
             st.session_state.df = apply_custom_missing_values(raw_df, missing_values)
         df = st.session_state.df
         if df is not None:
+            ensure_variable_type_state(df)
             continuous_vars, categorical_vars = variable_controls(df)
         else:
             continuous_vars, categorical_vars = [], []
