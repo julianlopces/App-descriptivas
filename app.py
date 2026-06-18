@@ -10,6 +10,7 @@ import streamlit as st
 from src.crosstabs import (
     TABLE_TYPE_LABELS,
     build_crosstab_excel,
+    build_selected_crosstab_excel,
     compute_crosstab,
     format_crosstab_for_display,
     iter_crosstab_tables,
@@ -1118,6 +1119,31 @@ def render_landing_page() -> None:
         [data-baseweb="popover"] [role="option"][aria-selected="true"] {{
             background: rgba(2,15,80,0.08) !important;
         }}
+
+        /* ── Botón principal de carga: alto contraste sobre fondo azul ─ */
+        div[data-testid="stButton"] button[kind="primary"] {{
+            background: #F7966B !important;
+            border: 1px solid #F7966B !important;
+            color: #000031 !important;
+            font-weight: 800 !important;
+            border-radius: 10px !important;
+            min-height: 46px !important;
+            box-shadow: 0 12px 26px rgba(247,150,107,0.34) !important;
+        }}
+        div[data-testid="stButton"] button[kind="primary"] * {{
+            color: #000031 !important;
+            font-weight: 800 !important;
+        }}
+        div[data-testid="stButton"] button[kind="primary"]:hover {{
+            background: #F4B21B !important;
+            border-color: #F4B21B !important;
+            color: #020F50 !important;
+            box-shadow: 0 14px 30px rgba(244,178,27,0.38) !important;
+            transform: translateY(-1px);
+        }}
+        div[data-testid="stButton"] button[kind="primary"]:hover * {{
+            color: #020F50 !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -1372,9 +1398,10 @@ def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFra
 
 
 def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFrame:
+    max_manual_tables = 10
     panel_start(
         "Tablas cruzadas por desagregaciones",
-        "Las variables principales se muestran como columnas y las variables de desagregación como filas. "
+        "Usa el modo automático para generar todas las combinaciones o el modo manual para armar solo las tablas necesarias. "
         "Por defecto se excluyen los valores perdidos.",
     )
     if len(categorical_vars) < 2:
@@ -1385,17 +1412,12 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
     controls, output = st.columns([0.38, 0.62], gap="large")
     with controls:
         st.markdown('<div class="side-heading">Configuración</div>', unsafe_allow_html=True)
-        main_vars = st.multiselect(
-            "Variables principales",
-            categorical_vars,
-            key="cross_main_vars",
-            help="Estas variables se usarán como columnas en todas las tablas del Excel.",
-        )
-        disaggregation_vars = st.multiselect(
-            "Variables de desagregación sociodemográfica",
-            categorical_vars,
-            key="cross_disagg_vars",
-            help="Estas variables se usarán como filas en todas las tablas del Excel.",
+        mode = st.segmented_control(
+            "Modo de generación",
+            ["Automático", "Manual"],
+            default="Automático",
+            key="cross_generation_mode",
+            help="Automático cruza grupos completos de variables. Manual permite agregar tablas una por una.",
         )
         table_type_label = st.selectbox(
             "Tipo de tabla",
@@ -1412,21 +1434,187 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             key="cross_table_decimals",
             help="Cantidad máxima de decimales para la vista previa y el Excel. Los ceros finales se ocultan.",
         )
-        st.caption(
-            "El Excel tendrá una hoja única con las tablas agrupadas por variable principal."
-        )
+        st.caption("El Excel tendrá una hoja única con las tablas seleccionadas.")
+
+        main_vars: list[str] = []
+        disaggregation_vars: list[str] = []
+        manual_specs: list[dict[str, str]] = []
+
+        if mode == "Automático":
+            main_vars = st.multiselect(
+                "Variables principales",
+                categorical_vars,
+                key="cross_main_vars",
+                help="Estas variables se usarán como columnas en todas las tablas del Excel.",
+            )
+            disaggregation_vars = st.multiselect(
+                "Variables de desagregación sociodemográfica",
+                categorical_vars,
+                key="cross_disagg_vars",
+                help="Estas variables se usarán como filas en todas las tablas del Excel.",
+            )
+        else:
+            st.session_state.setdefault("cross_manual_count", 1)
+            st.caption(f"Modo manual: máximo {max_manual_tables} tablas por Excel.")
+            for table_index in range(1, int(st.session_state.cross_manual_count) + 1):
+                with st.expander(f"Tabla {table_index}", expanded=table_index == 1):
+                    col_var = st.selectbox(
+                        "Variable para columnas",
+                        categorical_vars,
+                        key=f"cross_manual_col_{table_index}",
+                        help="Esta variable se mostrará en las columnas de esta tabla.",
+                    )
+                    row_options = [var for var in categorical_vars if var != col_var]
+                    row_var = st.selectbox(
+                        "Variable para filas",
+                        row_options,
+                        key=f"cross_manual_row_{table_index}",
+                        help="Esta variable se mostrará en las filas de esta tabla.",
+                    )
+                    custom_title = st.text_input(
+                        "Título personalizado",
+                        key=f"cross_manual_title_{table_index}",
+                        placeholder=f"Tabla: {col_var} x {row_var}",
+                        help="Si queda vacío, se usará el título por defecto con los nombres de las variables.",
+                    )
+                    use_custom_settings = st.toggle(
+                        "Usar configuración específica para esta tabla",
+                        value=False,
+                        key=f"cross_manual_use_custom_settings_{table_index}",
+                        help="Si se activa, esta tabla puede usar un tipo de tabla y decimales distintos a los globales.",
+                    )
+                    table_config: dict[str, object] = {}
+                    if use_custom_settings:
+                        custom_type_label = st.selectbox(
+                            "Tipo de tabla específico",
+                            list(TABLE_TYPE_LABELS.values()),
+                            index=list(TABLE_TYPE_LABELS.values()).index(table_type_label),
+                            key=f"cross_manual_type_{table_index}",
+                            help="Sobrescribe el tipo global solo para esta tabla.",
+                        )
+                        custom_decimals = st.number_input(
+                            "Decimales específicos",
+                            min_value=0,
+                            max_value=6,
+                            value=int(table_decimals),
+                            step=1,
+                            key=f"cross_manual_decimals_{table_index}",
+                            help="Sobrescribe los decimales globales solo para esta tabla.",
+                        )
+                        table_config = {
+                            "table_type": {label: key for key, label in TABLE_TYPE_LABELS.items()}[custom_type_label],
+                            "max_decimals": int(custom_decimals),
+                        }
+                    manual_specs.append(
+                        {
+                            "main_var": col_var,
+                            "disagg_var": row_var,
+                            "title": custom_title,
+                            **table_config,
+                        }
+                    )
+
+            add_col, remove_col = st.columns(2)
+            with add_col:
+                if st.button(
+                    "+ Agregar tabla",
+                    use_container_width=True,
+                    disabled=int(st.session_state.cross_manual_count) >= max_manual_tables,
+                    key="cross_add_manual_table",
+                ):
+                    st.session_state.cross_manual_count = min(
+                        int(st.session_state.cross_manual_count) + 1,
+                        max_manual_tables,
+                    )
+                    st.rerun()
+            with remove_col:
+                if st.button(
+                    "Quitar última",
+                    use_container_width=True,
+                    disabled=int(st.session_state.cross_manual_count) <= 1,
+                    key="cross_remove_manual_table",
+                ):
+                    st.session_state.cross_manual_count = max(
+                        int(st.session_state.cross_manual_count) - 1,
+                        1,
+                    )
+                    st.rerun()
 
     reverse_type_labels = {label: key for key, label in TABLE_TYPE_LABELS.items()}
     table_type = reverse_type_labels[table_type_label]
-    shared_vars = sorted(set(main_vars).intersection(disaggregation_vars))
-    valid_pairs = [
-        (main_var, disagg_var)
-        for main_var in main_vars
-        for disagg_var in disaggregation_vars
-        if main_var != disagg_var
-    ]
 
     with output:
+        if mode == "Manual":
+            valid_specs = [
+                spec for spec in manual_specs if spec["main_var"] and spec["disagg_var"] and spec["main_var"] != spec["disagg_var"]
+            ]
+            if not valid_specs:
+                st.warning("Configura al menos una tabla manual válida.")
+                panel_end()
+                return pd.DataFrame()
+
+            preview_tables = []
+            for spec in valid_specs:
+                effective_table_type = str(spec.get("table_type") or table_type)
+                table = compute_crosstab(df, spec["disagg_var"], spec["main_var"], effective_table_type)
+                if not table.empty:
+                    preview_tables.append((spec, table))
+
+            if not preview_tables:
+                st.info("No hay datos válidos para las tablas manuales seleccionadas.")
+                panel_end()
+                return pd.DataFrame()
+
+            panel_start(
+                "Vista previa del Excel",
+                f"Configuración global: {table_type_label}. Se muestran hasta 5 tablas; el Excel incluirá las tablas manuales válidas.",
+            )
+            excel_buffer = build_selected_crosstab_excel(
+                df,
+                valid_specs,
+                table_type,
+                max_decimals=int(table_decimals),
+            )
+            st.download_button(
+                "Descargar Excel",
+                excel_buffer.getvalue(),
+                "tablas_cruzadas_manual.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                key="cross_manual_download_excel",
+                help="Descarga un Excel con una hoja única y las tablas manuales configuradas.",
+            )
+            preview_limit = 5
+            for index, (spec, preview_table) in enumerate(preview_tables[:preview_limit], start=1):
+                default_title = f"Tabla: {spec['main_var']} x {spec['disagg_var']}"
+                title = spec.get("title", "").strip() or default_title
+                effective_table_type = str(spec.get("table_type") or table_type)
+                effective_decimals = int(spec.get("max_decimals", table_decimals))
+                effective_type_label = TABLE_TYPE_LABELS[effective_table_type]
+                st.markdown(f"**Tabla {index}: {title}**")
+                st.caption(f"{effective_type_label} · {effective_decimals} decimales máximos")
+                render_styled_table(
+                    format_crosstab_for_display(preview_table, effective_table_type, max_decimals=effective_decimals),
+                    height=260,
+                    key_prefix=f"cross_manual_preview_{index}",
+                    max_decimals=effective_decimals,
+                )
+            if len(preview_tables) > preview_limit:
+                st.caption(
+                    f"Vista previa limitada a {preview_limit} de {len(preview_tables)} tablas. "
+                    "Descarga el Excel para ver el conjunto completo."
+                )
+            panel_end()
+            panel_end()
+            return preview_tables[0][1].reset_index()
+
+        shared_vars = sorted(set(main_vars).intersection(disaggregation_vars))
+        valid_pairs = [
+            (main_var, disagg_var)
+            for main_var in main_vars
+            for disagg_var in disaggregation_vars
+            if main_var != disagg_var
+        ]
         if not main_vars:
             st.warning("Selecciona al menos una variable principal.")
             panel_end()

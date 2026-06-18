@@ -12,6 +12,8 @@ TABLE_TYPE_LABELS = {
     "col_pct": "Porcentaje por columna",
 }
 
+CrosstabSpec = dict[str, object]
+
 
 def iter_crosstab_tables(
     df: pd.DataFrame,
@@ -165,14 +167,19 @@ def build_crosstab_excel(
                 "border_color": "#D8E0F4",
             }
         )
-        percent_format = workbook.add_format(
-            {
-                "font_color": "#000031",
-                "border": 1,
-                "border_color": "#D8E0F4",
-                "num_format": _excel_percent_format(max_decimals),
-            }
-        )
+        percent_formats: dict[int, object] = {}
+
+        def get_percent_format(decimals: int):
+            if decimals not in percent_formats:
+                percent_formats[decimals] = workbook.add_format(
+                    {
+                        "font_color": "#000031",
+                        "border": 1,
+                        "border_color": "#D8E0F4",
+                        "num_format": _excel_percent_format(decimals),
+                    }
+                )
+            return percent_formats[decimals]
 
         current_row = 0
         max_widths: dict[int, int] = {}
@@ -206,13 +213,13 @@ def build_crosstab_excel(
                     worksheet.write(start_row, col_idx, str(column_name), header_format)
                     max_widths[col_idx] = max(max_widths.get(col_idx, 0), len(str(column_name)) + 2)
 
-                body_format = cell_format if table_type == "absolute" else percent_format
+                body_format = cell_format if table_type == "absolute" else get_percent_format(max_decimals)
                 for row_offset, (row_name, values) in enumerate(table.iterrows(), start=1):
                     worksheet.write(start_row + row_offset, 0, str(row_name), row_header_format)
                     max_widths[0] = max(max_widths.get(0, 0), len(str(row_name)) + 2)
                     for col_idx, value in enumerate(values, start=1):
                         worksheet.write(start_row + row_offset, col_idx, value, body_format)
-                        cell_length = len(f"{value:.1f}%") if table_type != "absolute" else len(str(value))
+                        cell_length = len(f"{value:.{max_decimals}f}%") if table_type != "absolute" else len(str(value))
                         max_widths[col_idx] = max(max_widths.get(col_idx, 0), cell_length + 2)
 
                 current_row = start_row + len(table.index) + 4
@@ -222,6 +229,121 @@ def build_crosstab_excel(
                 current_row += 3
 
         if current_row == 0:
+            worksheet.write(0, 0, "Sin tablas cruzadas válidas para exportar.", title_format)
+
+        for col_idx, width in max_widths.items():
+            worksheet.set_column(col_idx, col_idx, min(max(width, 14), 42))
+
+    output.seek(0)
+    return output
+
+
+def build_selected_crosstab_excel(
+    df: pd.DataFrame,
+    table_specs: list[CrosstabSpec],
+    table_type: str,
+    *,
+    max_decimals: int = 2,
+) -> BytesIO:
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        workbook = writer.book
+        worksheet = workbook.add_worksheet("Tablas cruzadas")
+        writer.sheets["Tablas cruzadas"] = worksheet
+
+        title_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_color": "#020F50",
+                "font_size": 12,
+            }
+        )
+        meta_format = workbook.add_format({"italic": True, "font_color": "#000031"})
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "bg_color": "#020F50",
+                "font_color": "#FFFFFF",
+                "border": 1,
+                "border_color": "#B6C4E5",
+            }
+        )
+        row_header_format = workbook.add_format(
+            {
+                "bold": True,
+                "bg_color": "#F7FAF2",
+                "font_color": "#020F50",
+                "border": 1,
+                "border_color": "#B6C4E5",
+            }
+        )
+        cell_format = workbook.add_format(
+            {
+                "font_color": "#000031",
+                "border": 1,
+                "border_color": "#D8E0F4",
+            }
+        )
+        percent_formats: dict[int, object] = {}
+
+        def get_percent_format(decimals: int):
+            if decimals not in percent_formats:
+                percent_formats[decimals] = workbook.add_format(
+                    {
+                        "font_color": "#000031",
+                        "border": 1,
+                        "border_color": "#D8E0F4",
+                        "num_format": _excel_percent_format(decimals),
+                    }
+                )
+            return percent_formats[decimals]
+
+        current_row = 0
+        max_widths: dict[int, int] = {}
+        written_tables = 0
+
+        for index, spec in enumerate(table_specs, start=1):
+            main_var = str(spec["main_var"])
+            disagg_var = str(spec["disagg_var"])
+            effective_table_type = str(spec.get("table_type") or table_type)
+            effective_decimals = int(spec.get("max_decimals", max_decimals))
+            table = compute_crosstab(df, disagg_var, main_var, effective_table_type)
+            if table.empty:
+                continue
+
+            default_title = f"Tabla: {main_var} x {disagg_var}"
+            table_title = spec.get("title", "").strip() or default_title
+            worksheet.write(current_row, 0, table_title, title_format)
+            worksheet.write(
+                current_row + 1,
+                0,
+                f"Tipo de visualización: {TABLE_TYPE_LABELS[effective_table_type]}",
+                meta_format,
+            )
+            worksheet.write(current_row + 1, 1, f"Tabla manual {index}", meta_format)
+
+            start_row = current_row + 2
+            worksheet.write(start_row, 0, disagg_var, header_format)
+            max_widths[0] = max(max_widths.get(0, 0), len(str(disagg_var)) + 2, len(table_title) + 2)
+
+            for col_idx, column_name in enumerate(table.columns, start=1):
+                worksheet.write(start_row, col_idx, str(column_name), header_format)
+                max_widths[col_idx] = max(max_widths.get(col_idx, 0), len(str(column_name)) + 2)
+
+            body_format = cell_format if effective_table_type == "absolute" else get_percent_format(effective_decimals)
+            for row_offset, (row_name, values) in enumerate(table.iterrows(), start=1):
+                worksheet.write(start_row + row_offset, 0, str(row_name), row_header_format)
+                max_widths[0] = max(max_widths.get(0, 0), len(str(row_name)) + 2)
+                for col_idx, value in enumerate(values, start=1):
+                    worksheet.write(start_row + row_offset, col_idx, value, body_format)
+                    cell_length = len(f"{value:.{effective_decimals}f}%") if effective_table_type != "absolute" else len(str(value))
+                    max_widths[col_idx] = max(max_widths.get(col_idx, 0), cell_length + 2)
+
+            written_tables += 1
+            current_row = start_row + len(table.index) + 4
+
+        if written_tables == 0:
             worksheet.write(0, 0, "Sin tablas cruzadas válidas para exportar.", title_format)
 
         for col_idx, width in max_widths.items():
