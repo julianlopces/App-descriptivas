@@ -2432,11 +2432,15 @@ def informe_ia_tab(
             key="ai_model_label",
         )
 
-    st.markdown("#### 2. Diccionario de variables (opcional)")
+    st.markdown("#### 2. Diccionario de variables (obligatorio)")
     dict_file = st.file_uploader(
-        "Sube un formulario ODK o un diccionario (CSV/XLSX/XLS)",
+        "Sube un formulario ODK o un diccionario de variables (CSV/XLSX/XLS)",
         type=["xlsx", "xls", "csv"],
         key="ai_dict_file",
+        help=(
+            "Este archivo es obligatorio para que el reporte use nombres, etiquetas "
+            "y descripciones correctas de las variables."
+        ),
     )
     variable_descriptions: dict[str, str] = {}
     if dict_file is not None:
@@ -2553,6 +2557,13 @@ def informe_ia_tab(
             st.error("Ingresa tu API key de Gemini para continuar.")
         elif not user_context.strip():
             st.error("El contexto del proyecto es obligatorio. Describe el estudio o la encuesta antes de generar el reporte.")
+        elif dict_file is None:
+            st.error("Sube un diccionario de variables o formulario ODK antes de generar el reporte.")
+        elif not variable_descriptions:
+            st.error(
+                "El diccionario cargado no produjo descripciones válidas. Revisa las columnas "
+                "de nombre y descripción de variables antes de generar el reporte."
+            )
         elif not socioeconomic_vars:
             st.error("Selecciona al menos una variable socioeconómica / de caracterización para describir la muestra.")
         elif not report_continuous and not report_categorical and not (cross_main and cross_disagg):
@@ -2608,27 +2619,17 @@ def informe_ia_tab(
     if report_text:
         st.markdown("---")
         st.markdown(report_text)
-        col_md, col_docx = st.columns(2)
-        with col_md:
+        try:
+            docx_bytes = markdown_to_docx_bytes(report_text)
             st.download_button(
-                "Descargar en Markdown (.md)",
-                report_text.encode("utf-8"),
-                "reporte_preliminar.md",
-                "text/markdown",
+                "Descargar en Word (.docx)",
+                docx_bytes,
+                "reporte_preliminar.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 width="stretch",
             )
-        with col_docx:
-            try:
-                docx_bytes = markdown_to_docx_bytes(report_text)
-                st.download_button(
-                    "Descargar en Word (.docx)",
-                    docx_bytes,
-                    "reporte_preliminar.docx",
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    width="stretch",
-                )
-            except Exception as exc:  # noqa: BLE001 - mostrar aviso al usuario
-                st.warning(f"No se pudo preparar el archivo Word: {exc}")
+        except Exception as exc:  # noqa: BLE001 - mostrar aviso al usuario
+            st.warning(f"No se pudo preparar el archivo Word: {exc}")
 
     panel_end()
 
