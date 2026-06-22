@@ -30,7 +30,7 @@ from src.palettes import (
     get_default_style_for_palette,
     get_palette_colors,
 )
-from src.plots import bar_chart, histogram, scatter_plot, to_png_bytes
+from src.plots import bar_chart, histogram, pie_chart, scatter_plot, to_png_bytes
 from src.theme import INSTITUTIONAL_COLORS, get_institutional_css
 from src.utils import dataframe_to_csv_bytes, dataframe_to_excel_bytes, tables_to_excel_bytes
 
@@ -713,6 +713,17 @@ def apply_trace_palette(fig, palette: list[str]) -> None:
             trace.update(marker={"color": color, "line": {"color": color}})
         elif trace_type in {"bar", "histogram"}:
             trace.update(marker={"color": color, "line": {"color": color, "width": 0.5}})
+        elif trace_type == "pie":
+            marker = getattr(trace, "marker", None)
+            existing_colors = list(getattr(marker, "colors", []) or []) if marker else []
+            if existing_colors:
+                trace.update(marker={"colors": existing_colors, "line": {"color": "#FFFFFF", "width": 1}})
+            else:
+                labels = list(getattr(trace, "labels", []) or [])
+                values = list(getattr(trace, "values", []) or [])
+                color_count = len(labels) or len(values) or 1
+                slice_colors = [palette[slice_index % len(palette)] for slice_index in range(color_count)]
+                trace.update(marker={"colors": slice_colors, "line": {"color": "#FFFFFF", "width": 1}})
         elif hasattr(trace, "marker"):
             trace.update(marker={"color": color})
 
@@ -874,6 +885,8 @@ def style_figure(fig, style: dict[str, object]) -> None:
         title_font={"color": text_color, "family": font_family, "size": font_size},
         zerolinecolor=grid_color,
     )
+    for annotation in fig.layout.annotations or []:
+        annotation.update(font={"color": text_color, "family": font_family, "size": font_size})
 
 
 def chart_title_controls(default_title: str, key_prefix: str) -> str:
@@ -1843,14 +1856,21 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
         with st.expander("Tipo de gráfico", expanded=True):
             chart_type = st.radio(
                 "Tipo de gráfico",
-                ["Barras", "Histograma", "Gráfico de dispersión"],
+                ["Barras", "Histograma", "Gráfico de pie", "Gráfico de dispersión"],
                 horizontal=False,
                 label_visibility="collapsed",
+            )
+            exclude_missing = st.toggle(
+                "Excluir datos perdidos",
+                value=True,
+                help="Si está activo, no se grafican filas con valores perdidos en las variables usadas por el gráfico.",
             )
             barmode = "Apiladas"
             percent = False
             bins = 30
             show_trendline = False
+            pie_shape = "Dona"
+            pie_label_decimals = 1
             if chart_type == "Barras":
                 barmode = st.segmented_control(
                     "Modo de barras",
@@ -1871,6 +1891,22 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                     30,
                     help="Cantidad de intervalos usados para agrupar los datos.",
                 )
+            elif chart_type == "Gráfico de pie":
+                pie_shape = st.segmented_control(
+                    "Forma",
+                    ["Dona", "Pie"],
+                    default="Dona",
+                    help="Define si el gráfico se muestra como dona o como pie completo.",
+                )
+                pie_label_decimals = st.number_input(
+                    "Decimales de porcentaje",
+                    min_value=0,
+                    max_value=4,
+                    value=1,
+                    step=1,
+                    help="Cantidad de decimales visibles en los porcentajes de cada porción.",
+                )
+                st.caption("Los gráficos de pie muestran porcentajes por defecto.")
             else:
                 show_trendline = st.toggle(
                     "Mostrar línea de ajuste",
@@ -1921,6 +1957,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 width=900,
                 height=520,
                 percent=False,
+                exclude_missing=exclude_missing,
             )
 
         elif chart_type == "Barras":
@@ -2016,6 +2053,48 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 label_decimals=int(label_decimals),
                 width=900,
                 height=520,
+                exclude_missing=exclude_missing,
+            )
+
+        elif chart_type == "Gráfico de pie":
+            if not categorical_vars:
+                st.info("No hay variables categóricas seleccionadas.")
+                return
+            with st.expander("Selección de variables", expanded=True):
+                names = st.selectbox(
+                    "Variable de proporción",
+                    categorical_vars,
+                    help="Variable cuyas categorías se distribuirán como porcentaje del total.",
+                )
+                facet_options = [c for c in categorical_vars if c != names]
+                facet = st.selectbox(
+                    "Variable para comparar/panel",
+                    ["Ninguna"] + facet_options,
+                    help="Divide el gráfico en paneles para comparar la distribución entre grupos.",
+                )
+            with st.expander("Textos, etiquetas y rango de ejes", expanded=True):
+                title = chart_title_controls(f"Distribución de {names}", "pie")
+                legend_title = st.text_input(
+                    "Título de la leyenda",
+                    names,
+                    key="pie_legend_title",
+                    help="Nombre que aparecerá sobre la leyenda del gráfico.",
+                )
+                st.caption("Los gráficos de pie muestran porcentajes y no usan rangos de ejes.")
+            style_config = chart_style_controls(chart_type)
+            style_config.update(st.session_state["pie_title_options"])
+            style_config["legend_title"] = legend_title
+            fig = pie_chart(
+                df,
+                names=names,
+                facet=None if facet == "Ninguna" else facet,
+                color_sequence=style_config["palette"],
+                title=title,
+                hole=0.52 if pie_shape == "Dona" else 0.0,
+                label_decimals=int(pie_label_decimals),
+                width=900,
+                height=520,
+                exclude_missing=exclude_missing,
             )
 
         else:
@@ -2087,6 +2166,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
                 y_label=y_label,
                 width=900,
                 height=520,
+                exclude_missing=exclude_missing,
             )
 
     if fig is None:
@@ -2218,7 +2298,7 @@ def instructions_tab() -> None:
                 <h4>Gr&aacute;ficos</h4>
                 <p>Construye visualizaciones personalizadas para an&aacute;lisis e informes.</p>
                 <ul>
-                    <li>Genera barras, histogramas o gr&aacute;ficos de dispersi&oacute;n.</li>
+                    <li>Genera barras, histogramas, gr&aacute;ficos de pie o gr&aacute;ficos de dispersi&oacute;n.</li>
                     <li>Personaliza t&iacute;tulos, ejes, colores, leyenda y rangos.</li>
                     <li>Exporta el gr&aacute;fico como PNG cuando est&eacute; disponible.</li>
                 </ul>

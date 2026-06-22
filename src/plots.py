@@ -11,7 +11,9 @@ import socket
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from plotly.graph_objects import Figure
+from plotly.subplots import make_subplots
 
 from src.descriptive_stats import _coerce_numeric
 
@@ -269,8 +271,10 @@ def _capture_with_devtools(debug_port: int, page_url: str) -> bytes | None:
     return asyncio.run(run_capture(ws_url))
 
 
-def _clean_for_plot(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+def _clean_for_plot(df: pd.DataFrame, columns: list[str], *, exclude_missing: bool = True) -> pd.DataFrame:
     plotted = df[columns].copy()
+    if exclude_missing:
+        plotted = plotted.dropna(subset=columns)
     for column in columns:
         if plotted[column].dtype == "object":
             plotted[column] = plotted[column].astype("string").fillna("(Perdido)")
@@ -297,9 +301,10 @@ def histogram(
     width: int,
     height: int,
     percent: bool,
+    exclude_missing: bool = True,
 ) -> Figure:
     columns = [x] + ([color] if color else [])
-    plotted = _clean_for_plot(df, columns)
+    plotted = _clean_for_plot(df, columns, exclude_missing=exclude_missing)
     plotted[x] = _coerce_numeric(plotted[x])
     plotted = plotted.dropna(subset=[x])
     fig = px.histogram(
@@ -335,9 +340,10 @@ def bar_chart(
     label_decimals: int,
     width: int,
     height: int,
+    exclude_missing: bool = True,
 ) -> Figure:
     columns = [x] + ([color] if color else []) + ([facet] if facet else [])
-    plotted = _clean_for_plot(df, columns)
+    plotted = _clean_for_plot(df, columns, exclude_missing=exclude_missing)
 
     group_columns = [x] + ([color] if color else []) + ([facet] if facet else [])
     counts = plotted.groupby(group_columns, dropna=False).size().reset_index(name="frecuencia")
@@ -400,6 +406,78 @@ def bar_chart(
     return fig
 
 
+def pie_chart(
+    df: pd.DataFrame,
+    *,
+    names: str,
+    facet: str | None,
+    color_sequence: list[str] | None,
+    title: str,
+    hole: float,
+    label_decimals: int,
+    width: int,
+    height: int,
+    exclude_missing: bool = True,
+) -> Figure:
+    columns = [names] + ([facet] if facet else [])
+    plotted = _clean_for_plot(df, columns, exclude_missing=exclude_missing)
+
+    palette = color_sequence or px.colors.qualitative.Plotly
+    categories = list(plotted[names].dropna().unique())
+    color_map = {category: palette[index % len(palette)] for index, category in enumerate(categories)}
+    texttemplate = f"%{{percent:.{label_decimals}%}}"
+    hovertemplate = "%{label}<br>%{percent:.2%}<extra></extra>"
+
+    if not facet:
+        counts = plotted.groupby(names, dropna=False).size().reset_index(name="frecuencia")
+        labels = counts[names].astype(str).tolist()
+        fig = go.Figure(
+            data=[
+                go.Pie(
+                    labels=labels,
+                    values=counts["frecuencia"],
+                    hole=hole,
+                    sort=False,
+                    textinfo="percent",
+                    texttemplate=texttemplate,
+                    hovertemplate=hovertemplate,
+                    marker={"colors": [color_map.get(label, palette[0]) for label in labels]},
+                )
+            ]
+        )
+        fig.update_layout(title=title, width=width, height=height)
+        return fig
+
+    facet_values = list(plotted[facet].dropna().unique())
+    fig = make_subplots(
+        rows=1,
+        cols=len(facet_values),
+        specs=[[{"type": "domain"} for _ in facet_values]],
+        subplot_titles=[str(value) for value in facet_values],
+    )
+    for column_index, facet_value in enumerate(facet_values, start=1):
+        subset = plotted[plotted[facet] == facet_value]
+        counts = subset.groupby(names, dropna=False).size().reset_index(name="frecuencia")
+        labels = counts[names].astype(str).tolist()
+        fig.add_trace(
+            go.Pie(
+                labels=labels,
+                values=counts["frecuencia"],
+                hole=hole,
+                sort=False,
+                textinfo="percent",
+                texttemplate=texttemplate,
+                hovertemplate=hovertemplate,
+                marker={"colors": [color_map.get(label, palette[0]) for label in labels]},
+                showlegend=column_index == 1,
+            ),
+            row=1,
+            col=column_index,
+        )
+    fig.update_layout(title=title, width=width, height=height)
+    return fig
+
+
 def scatter_plot(
     df: pd.DataFrame,
     *,
@@ -416,9 +494,10 @@ def scatter_plot(
     y_label: str,
     width: int,
     height: int,
+    exclude_missing: bool = True,
 ) -> Figure:
     columns = [x, y] + ([color] if color else [])
-    plotted = _clean_for_plot(df, columns)
+    plotted = _clean_for_plot(df, columns, exclude_missing=exclude_missing)
     plotted[x] = _coerce_numeric(plotted[x])
     plotted[y] = _coerce_numeric(plotted[y])
     plotted = plotted.dropna(subset=[x, y])
