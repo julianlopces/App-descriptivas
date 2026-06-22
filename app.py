@@ -534,6 +534,62 @@ def dataset_card(df: pd.DataFrame | None) -> None:
     st.markdown(body, unsafe_allow_html=True)
 
 
+def loading_dataset_card(file_name: str) -> str:
+    return f"""
+    <div style="
+        background:#FFFFFF;
+        border:1px solid #B6C4E5;
+        border-radius:12px;
+        box-shadow:0 14px 36px rgba(0,0,49,0.18);
+        padding:1.15rem 1.25rem;
+        margin:0.85rem 0;
+        color:#020F50;
+        text-align:center;
+    ">
+        <div style="font-weight:800; font-size:1.05rem; margin-bottom:0.35rem;">
+            Leyendo dataset...
+        </div>
+        <div style="font-size:0.9rem; line-height:1.45;">
+            Estamos procesando <strong>{escape(file_name)}</strong>. Esto puede tomar unos segundos si el archivo es grande.
+        </div>
+        <div style="
+            height:8px;
+            margin-top:0.9rem;
+            border-radius:999px;
+            background:linear-gradient(90deg, #020F50, #1955A6, #7CCCBF);
+            background-size:180% 100%;
+        "></div>
+    </div>
+    """
+
+
+def process_uploaded_dataset(
+    uploaded: object,
+    *,
+    sheet_name: str | None,
+    csv_encoding: str,
+    csv_separator: str,
+) -> None:
+    loaded = load_uploaded_file(
+        uploaded,
+        sheet_name=sheet_name,
+        csv_encoding=csv_encoding,
+        csv_separator=csv_separator,
+    )
+    loaded = normalize_columns(loaded)
+    if loaded.empty:
+        raise ValueError("El archivo no contiene filas de datos.")
+
+    st.session_state.raw_df = loaded
+    missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
+    loaded_for_analysis = apply_custom_missing_values(loaded, missing_values)
+    st.session_state.df = loaded_for_analysis
+    st.session_state.file_name = uploaded.name
+    detected = detect_variable_types(loaded_for_analysis)
+    st.session_state.continuous_vars = detected["continuous"]
+    st.session_state.categorical_vars = detected["categorical"]
+
+
 def load_controls() -> None:
     st.markdown(
         """
@@ -590,27 +646,22 @@ def load_controls() -> None:
             )
 
     if st.button("Cargar dataset", type="primary", use_container_width=True):
+        loading_placeholder = st.empty()
         try:
-            loaded = load_uploaded_file(
-                uploaded,
-                sheet_name=sheet_name,
-                csv_encoding=csv_encoding,
-                csv_separator=csv_separator,
+            loading_placeholder.markdown(
+                loading_dataset_card(uploaded.name),
+                unsafe_allow_html=True,
             )
-            loaded = normalize_columns(loaded)
-            if loaded.empty:
-                st.error("El archivo no contiene filas de datos.")
-                return
-            st.session_state.raw_df = loaded
-            missing_values = parse_custom_missing_values(st.session_state.custom_missing_values)
-            loaded_for_analysis = apply_custom_missing_values(loaded, missing_values)
-            st.session_state.df = loaded_for_analysis
-            st.session_state.file_name = uploaded.name
-            detected = detect_variable_types(loaded_for_analysis)
-            st.session_state.continuous_vars = detected["continuous"]
-            st.session_state.categorical_vars = detected["categorical"]
+            with st.spinner("Leyendo y preparando la base de datos..."):
+                process_uploaded_dataset(
+                    uploaded,
+                    sheet_name=sheet_name,
+                    csv_encoding=csv_encoding,
+                    csv_separator=csv_separator,
+                )
             st.rerun()
         except Exception as exc:
+            loading_placeholder.empty()
             st.error(f"No fue posible cargar el archivo: {exc}")
 
 
@@ -1377,29 +1428,22 @@ def render_landing_page() -> None:
             if uploaded is None:
                 st.warning("Primero selecciona un archivo.")
             else:
+                loading_placeholder = st.empty()
                 try:
-                    loaded = load_uploaded_file(
-                        uploaded,
-                        sheet_name=sheet_name,
-                        csv_encoding=csv_encoding,
-                        csv_separator=csv_separator,
+                    loading_placeholder.markdown(
+                        loading_dataset_card(uploaded.name),
+                        unsafe_allow_html=True,
                     )
-                    loaded = normalize_columns(loaded)
-                    if loaded.empty:
-                        st.error("El archivo no contiene filas de datos.")
-                    else:
-                        st.session_state.raw_df = loaded
-                        missing_values = parse_custom_missing_values(
-                            st.session_state.custom_missing_values
+                    with st.spinner("Leyendo y preparando la base de datos..."):
+                        process_uploaded_dataset(
+                            uploaded,
+                            sheet_name=sheet_name,
+                            csv_encoding=csv_encoding,
+                            csv_separator=csv_separator,
                         )
-                        loaded_for_analysis = apply_custom_missing_values(loaded, missing_values)
-                        st.session_state.df = loaded_for_analysis
-                        st.session_state.file_name = uploaded.name
-                        detected = detect_variable_types(loaded_for_analysis)
-                        st.session_state.continuous_vars = detected["continuous"]
-                        st.session_state.categorical_vars = detected["categorical"]
-                        st.rerun()
+                    st.rerun()
                 except Exception as exc:
+                    loading_placeholder.empty()
                     st.error(f"No fue posible cargar el archivo: {exc}")
 
     # ------------------------------------------------------------------ #
