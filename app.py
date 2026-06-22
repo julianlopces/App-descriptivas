@@ -55,12 +55,20 @@ FONT_FAMILIES = {
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 LOGO_PATH = PROJECT_ROOT / "media" / "Equilibrium-Logo-Completo-Azul.png"
+WHITE_LOGO_PATH = PROJECT_ROOT / "media" / "Equilibrium-Logo-Blanco.png"
 
 
 def get_logo_data_uri() -> str:
     if not LOGO_PATH.exists():
         return ""
     encoded = base64.b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def get_white_logo_data_uri() -> str:
+    if not WHITE_LOGO_PATH.exists():
+        return ""
+    encoded = base64.b64encode(WHITE_LOGO_PATH.read_bytes()).decode("ascii")
     return f"data:image/png;base64,{encoded}"
 
 
@@ -591,9 +599,16 @@ def process_uploaded_dataset(
 
 
 def load_controls() -> None:
+    logo_data_uri = get_white_logo_data_uri()
+    logo_html = (
+        f'<img src="{logo_data_uri}" alt="Equilibrium" style="height:30px; width:auto; margin-bottom:0.85rem;">'
+        if logo_data_uri
+        else ""
+    )
     st.markdown(
-        """
+        f"""
         <div style="text-align:center; padding:0.6rem 0 1rem;">
+            {logo_html}
             <div style="font-size:1.55rem; font-weight:800; color:#FFFFFF; line-height:1.2;">
                 QuanTi Stats
             </div>
