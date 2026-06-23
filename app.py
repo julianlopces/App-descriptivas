@@ -33,13 +33,14 @@ from src.ai_report import (
     generate_report,
     inspect_dictionary_file,
     markdown_to_docx_bytes,
+    split_report_response,
 )
 from src.palettes import (
     get_available_palettes,
     get_default_style_for_palette,
     get_palette_colors,
 )
-from src.plots import bar_chart, histogram, pie_chart, scatter_plot, to_png_bytes
+from src.plots import ai_chart_to_png, bar_chart, histogram, pie_chart, scatter_plot, to_png_bytes
 from src.theme import INSTITUTIONAL_COLORS, get_institutional_css
 from src.utils import dataframe_to_csv_bytes, dataframe_to_excel_bytes, tables_to_excel_bytes
 
@@ -331,6 +332,7 @@ def init_state() -> None:
         "categorical_vars": [],
         "custom_missing_values": "",
         "ai_report_text": None,
+        "ai_chart_suggestions": [],
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -2406,6 +2408,491 @@ def instructions_tab() -> None:
     panel_end()
 
 
+AI_CHART_TYPE_LABELS = {
+    "bar": "Barras",
+    "histogram": "Histograma",
+    "scatter": "Gráfico de dispersión",
+    "pie": "Gráfico de pie",
+}
+
+AI_CHART_LABEL_TO_TYPE = {label: key for key, label in AI_CHART_TYPE_LABELS.items()}
+
+
+def ai_default_style(legend_title: str = "") -> dict[str, object]:
+    defaults = get_default_style_for_palette("Paleta Equi")
+    return {
+        "palette_name": "Paleta Equi",
+        "palette": get_palette_colors("Paleta Equi"),
+        "legend_title": legend_title,
+        "show_title": True,
+        "title_alignment": "Centro",
+        "show_grid": True,
+        "paper_bg": defaults["paper_bg"],
+        "plot_bg": defaults["plot_bg"],
+        "text_color": defaults["text_color"],
+        "grid_color": defaults["grid_color"],
+        "font_family": "Geologica",
+        "font_size": 16,
+        "orientation": "Vertical",
+    }
+
+
+def selected_category_count(df: pd.DataFrame, column: str) -> int:
+    if column not in df.columns:
+        return 0
+    return int(df[column].dropna().nunique())
+
+
+def normalize_ai_chart_suggestions(
+    raw_suggestions: list[dict[str, object]],
+    *,
+    df: pd.DataFrame,
+    continuous_vars: list[str],
+    categorical_vars: list[str],
+    max_suggestions: int,
+    max_categories: int,
+) -> list[dict[str, object]]:
+    continuous_set = set(continuous_vars)
+    categorical_set = set(categorical_vars)
+    valid: list[dict[str, object]] = []
+
+    for raw in raw_suggestions:
+        chart_type = str(raw.get("chart_type") or "").strip().lower()
+        if chart_type not in AI_CHART_TYPE_LABELS:
+            continue
+
+        x = str(raw.get("x") or "").strip()
+        y = str(raw.get("y") or "").strip()
+        color = str(raw.get("color") or "").strip() or None
+        facet = str(raw.get("facet") or "").strip() or None
+
+        if chart_type in {"bar", "pie"}:
+            if x not in categorical_set:
+                continue
+            if selected_category_count(df, x) > max_categories:
+                continue
+            if color and color not in categorical_set:
+                color = None
+            if facet and facet not in categorical_set:
+                facet = None
+            if color and selected_category_count(df, color) > max_categories:
+                color = None
+            if facet and selected_category_count(df, facet) > max_categories:
+                facet = None
+        elif chart_type == "histogram":
+            if x not in continuous_set:
+                continue
+            if color and color not in categorical_set:
+                color = None
+            facet = None
+        elif chart_type == "scatter":
+            if x not in continuous_set or y not in continuous_set or x == y:
+                continue
+            if color and color not in categorical_set:
+                color = None
+            facet = None
+
+        title = str(raw.get("title") or "").strip()
+        caption = str(raw.get("caption") or "").strip()
+        normalized = {
+            "chart_type": chart_type,
+            "title": title or f"{AI_CHART_TYPE_LABELS[chart_type]} de {x}",
+            "x": x,
+            "y": y if y else None,
+            "color": color,
+            "facet": facet,
+            "percent": bool(raw.get("percent", chart_type in {"bar", "pie"})),
+            "barmode": str(raw.get("barmode") or "group").lower(),
+            "orientation": str(raw.get("orientation") or "v").lower(),
+            "show_labels": bool(raw.get("show_labels", chart_type == "bar")),
+            "bins": int(raw.get("bins") or 30),
+            "hole": float(raw.get("hole") if raw.get("hole") is not None else 0.52),
+            "show_trendline": bool(raw.get("show_trendline", False)),
+            "trendline_scope": str(raw.get("trendline_scope") or "overall").lower(),
+            "x_label": str(raw.get("x_label") or x),
+            "y_label": str(raw.get("y_label") or ("Porcentaje" if raw.get("percent") else "Frecuencia")),
+            "legend_title": str(raw.get("legend_title") or (color or facet or "")),
+            "caption": caption or "Gráfica sugerida para complementar la lectura del informe.",
+        }
+        valid.append(normalized)
+        if len(valid) >= max_suggestions:
+            break
+
+    return valid
+
+
+def build_ai_chart_figure(
+    df: pd.DataFrame,
+    spec: dict[str, object],
+    *,
+    width: int = 900,
+    height: int = 520,
+) -> object | None:
+    chart_type = str(spec["chart_type"])
+    color = spec.get("color")
+    facet = spec.get("facet")
+    legend_title = str(spec.get("legend_title") or "")
+    style_config = ai_default_style(legend_title)
+
+    try:
+        if chart_type == "bar":
+            percent = bool(spec.get("percent", True))
+            orientation = str(spec.get("orientation") or "v")
+            fig = bar_chart(
+                df,
+                x=str(spec["x"]),
+                color=str(color) if color else None,
+                facet=str(facet) if facet else None,
+                color_sequence=style_config["palette"],
+                title=str(spec["title"]),
+                x_label=str(spec.get("x_label") or spec["x"]),
+                y_label=str(spec.get("y_label") or ("Porcentaje" if percent else "Frecuencia")),
+                percent=percent,
+                percent_denominator="total",
+                orientation="h" if orientation == "h" else "v",
+                barmode="stack" if str(spec.get("barmode")) == "stack" else "group",
+                show_labels=bool(spec.get("show_labels", True)),
+                label_decimals=int(spec.get("label_decimals", 2)),
+                width=width,
+                height=height,
+                exclude_missing=True,
+            )
+        elif chart_type == "histogram":
+            fig = histogram(
+                df,
+                x=str(spec["x"]),
+                color=str(color) if color else None,
+                color_sequence=style_config["palette"],
+                title=str(spec["title"]),
+                x_label=str(spec.get("x_label") or spec["x"]),
+                y_label=str(spec.get("y_label") or "Frecuencia"),
+                bins=int(spec.get("bins", 30)),
+                width=width,
+                height=height,
+                percent=False,
+                exclude_missing=True,
+            )
+        elif chart_type == "pie":
+            fig = pie_chart(
+                df,
+                names=str(spec["x"]),
+                facet=str(facet) if facet else None,
+                color_sequence=style_config["palette"],
+                title=str(spec["title"]),
+                hole=float(spec.get("hole", 0.52)),
+                label_decimals=int(spec.get("label_decimals", 1)),
+                width=width,
+                height=height,
+                exclude_missing=True,
+            )
+        elif chart_type == "scatter":
+            fig = scatter_plot(
+                df,
+                x=str(spec["x"]),
+                y=str(spec["y"]),
+                color=str(color) if color else None,
+                color_sequence=style_config["palette"],
+                show_trendline=bool(spec.get("show_trendline", False)),
+                trendline_method="OLS",
+                trendline_scope=str(spec.get("trendline_scope") or "overall"),
+                trendline_color="#F7966B",
+                title=str(spec["title"]),
+                x_label=str(spec.get("x_label") or spec["x"]),
+                y_label=str(spec.get("y_label") or spec["y"]),
+                width=width,
+                height=height,
+                exclude_missing=True,
+            )
+        else:
+            return None
+    except Exception:
+        return None
+
+    style_figure(fig, style_config)
+    return fig
+
+
+def ai_chart_editor(
+    df: pd.DataFrame,
+    spec: dict[str, object],
+    index: int,
+    *,
+    continuous_vars: list[str],
+    categorical_vars: list[str],
+    max_categories: int,
+) -> dict[str, object] | None:
+    key_prefix = f"ai_chart_{index}"
+    chart_type = str(spec.get("chart_type") or "bar")
+    chart_label = AI_CHART_TYPE_LABELS.get(chart_type, "Barras")
+
+    with st.expander(f"Gráfica {index}: {spec.get('title', chart_label)}", expanded=index == 1):
+        include = st.toggle(
+            "Incluir en Word",
+            value=True,
+            key=f"{key_prefix}_include",
+            help="Si está activo, esta gráfica se insertará en la descarga Word.",
+        )
+        chart_label = st.selectbox(
+            "Tipo de gráfico",
+            list(AI_CHART_LABEL_TO_TYPE.keys()),
+            index=list(AI_CHART_LABEL_TO_TYPE.keys()).index(chart_label),
+            key=f"{key_prefix}_type",
+        )
+        chart_type = AI_CHART_LABEL_TO_TYPE[chart_label]
+
+        edited: dict[str, object] = {"chart_type": chart_type}
+        if chart_type in {"bar", "pie"}:
+            available_x = [c for c in categorical_vars if selected_category_count(df, c) <= max_categories]
+            if not available_x:
+                st.warning("No hay variables categóricas con un número manejable de categorías.")
+                return None
+            default_x = spec.get("x") if spec.get("x") in available_x else available_x[0]
+            edited["x"] = st.selectbox(
+                "Variable principal",
+                available_x,
+                index=available_x.index(default_x),
+                key=f"{key_prefix}_x_cat",
+            )
+            facet_options = ["Ninguna"] + [c for c in available_x if c != edited["x"]]
+            if chart_type == "bar":
+                color_options = ["Ninguna"] + [c for c in available_x if c != edited["x"]]
+                default_color = spec.get("color") if spec.get("color") in color_options else "Ninguna"
+                color = st.selectbox(
+                    "Variable para desagregar/color",
+                    color_options,
+                    index=color_options.index(default_color),
+                    key=f"{key_prefix}_color",
+                )
+                default_facet = spec.get("facet") if spec.get("facet") in facet_options else "Ninguna"
+                facet = st.selectbox(
+                    "Tercera variable / panel",
+                    facet_options,
+                    index=facet_options.index(default_facet),
+                    key=f"{key_prefix}_facet_bar",
+                )
+                edited["color"] = None if color == "Ninguna" else color
+                edited["facet"] = None if facet == "Ninguna" else facet
+                edited["percent"] = st.toggle(
+                    "Mostrar porcentajes",
+                    value=bool(spec.get("percent", True)),
+                    key=f"{key_prefix}_percent",
+                )
+                barmode_label = st.segmented_control(
+                    "Modo de barras",
+                    ["Agrupadas", "Apiladas"],
+                    default="Apiladas" if spec.get("barmode") == "stack" else "Agrupadas",
+                    key=f"{key_prefix}_barmode",
+                )
+                edited["barmode"] = "stack" if barmode_label == "Apiladas" else "group"
+                orientation_label = st.segmented_control(
+                    "Orientación",
+                    ["Vertical", "Horizontal"],
+                    default="Horizontal" if spec.get("orientation") == "h" else "Vertical",
+                    key=f"{key_prefix}_orientation",
+                )
+                edited["orientation"] = "h" if orientation_label == "Horizontal" else "v"
+                edited["show_labels"] = st.toggle(
+                    "Mostrar etiquetas",
+                    value=bool(spec.get("show_labels", True)),
+                    key=f"{key_prefix}_show_labels",
+                )
+                edited["label_decimals"] = st.number_input(
+                    "Decimales de etiquetas",
+                    min_value=0,
+                    max_value=4,
+                    value=int(spec.get("label_decimals", 2)),
+                    step=1,
+                    key=f"{key_prefix}_label_decimals_bar",
+                )
+            else:
+                default_facet = spec.get("facet") if spec.get("facet") in facet_options else "Ninguna"
+                facet = st.selectbox(
+                    "Variable para comparar/panel",
+                    facet_options,
+                    index=facet_options.index(default_facet),
+                    key=f"{key_prefix}_facet_pie",
+                )
+                edited["facet"] = None if facet == "Ninguna" else facet
+                edited["hole"] = 0.52 if st.segmented_control(
+                    "Forma",
+                    ["Dona", "Pie"],
+                    default="Pie" if float(spec.get("hole", 0.52)) == 0 else "Dona",
+                    key=f"{key_prefix}_pie_shape",
+                ) == "Dona" else 0.0
+                edited["label_decimals"] = st.number_input(
+                    "Decimales de porcentaje",
+                    min_value=0,
+                    max_value=4,
+                    value=int(spec.get("label_decimals", 1)),
+                    step=1,
+                    key=f"{key_prefix}_label_decimals_pie",
+                )
+        elif chart_type == "histogram":
+            if not continuous_vars:
+                st.warning("No hay variables continuas disponibles.")
+                return None
+            default_x = spec.get("x") if spec.get("x") in continuous_vars else continuous_vars[0]
+            edited["x"] = st.selectbox(
+                "Variable continua",
+                continuous_vars,
+                index=continuous_vars.index(default_x),
+                key=f"{key_prefix}_x_cont",
+            )
+            color_options = ["Ninguna"] + categorical_vars
+            default_color = spec.get("color") if spec.get("color") in color_options else "Ninguna"
+            color = st.selectbox(
+                "Agrupación/color",
+                color_options,
+                index=color_options.index(default_color),
+                key=f"{key_prefix}_color_hist",
+            )
+            edited["color"] = None if color == "Ninguna" else color
+            edited["bins"] = st.slider(
+                "Bins",
+                5,
+                100,
+                int(spec.get("bins", 30)),
+                key=f"{key_prefix}_bins",
+            )
+        else:
+            if len(continuous_vars) < 2:
+                st.warning("Se necesitan al menos dos variables continuas.")
+                return None
+            default_x = spec.get("x") if spec.get("x") in continuous_vars else continuous_vars[0]
+            y_options = [c for c in continuous_vars if c != default_x]
+            default_y = spec.get("y") if spec.get("y") in y_options else y_options[0]
+            edited["x"] = st.selectbox(
+                "Variable X",
+                continuous_vars,
+                index=continuous_vars.index(default_x),
+                key=f"{key_prefix}_x_scatter",
+            )
+            y_options = [c for c in continuous_vars if c != edited["x"]]
+            edited["y"] = st.selectbox(
+                "Variable Y",
+                y_options,
+                index=y_options.index(default_y) if default_y in y_options else 0,
+                key=f"{key_prefix}_y_scatter",
+            )
+            color_options = ["Ninguna"] + categorical_vars
+            default_color = spec.get("color") if spec.get("color") in color_options else "Ninguna"
+            color = st.selectbox(
+                "Color",
+                color_options,
+                index=color_options.index(default_color),
+                key=f"{key_prefix}_color_scatter",
+            )
+            edited["color"] = None if color == "Ninguna" else color
+            edited["show_trendline"] = st.toggle(
+                "Mostrar línea de ajuste",
+                value=bool(spec.get("show_trendline", False)),
+                key=f"{key_prefix}_trendline",
+            )
+            if edited["show_trendline"] and edited.get("color"):
+                scope_label = st.selectbox(
+                    "Cálculo de la línea de ajuste",
+                    ["General", "Por subgrupos"],
+                    index=1 if spec.get("trendline_scope") == "trace" else 0,
+                    key=f"{key_prefix}_trendline_scope",
+                )
+                edited["trendline_scope"] = "trace" if scope_label == "Por subgrupos" else "overall"
+            else:
+                edited["trendline_scope"] = "overall"
+
+        edited["title"] = st.text_input(
+            "Título",
+            str(spec.get("title") or ""),
+            key=f"{key_prefix}_title",
+        )
+        edited["x_label"] = st.text_input(
+            "Eje X",
+            str(spec.get("x_label") or edited.get("x") or ""),
+            key=f"{key_prefix}_x_label",
+        )
+        default_y_label = str(
+            spec.get("y_label")
+            or ("Porcentaje" if edited.get("percent") else "Frecuencia")
+        )
+        edited["y_label"] = st.text_input(
+            "Eje Y",
+            default_y_label,
+            key=f"{key_prefix}_y_label",
+        )
+        edited["legend_title"] = st.text_input(
+            "Título de la leyenda",
+            str(spec.get("legend_title") or edited.get("color") or edited.get("facet") or edited.get("x") or ""),
+            key=f"{key_prefix}_legend_title",
+        )
+        edited["caption"] = st.text_area(
+            "Texto que acompaña la gráfica",
+            str(spec.get("caption") or ""),
+            height=90,
+            key=f"{key_prefix}_caption",
+        )
+
+        figure = build_ai_chart_figure(df, edited)
+        if figure is None:
+            st.warning("No fue posible generar esta gráfica con la configuración actual.")
+            return None
+        st.plotly_chart(figure, width="stretch")
+        return {"spec": edited, "fig": figure, "include": include}
+
+
+def render_ai_chart_suggestions(
+    df: pd.DataFrame,
+    suggestions: list[dict[str, object]],
+    *,
+    continuous_vars: list[str],
+    categorical_vars: list[str],
+    max_categories: int,
+) -> list[dict[str, object]]:
+    if not suggestions:
+        return []
+
+    st.markdown("### Gráficas sugeridas")
+    st.caption("Puedes ajustar estas gráficas. Las versiones visibles e incluidas se insertarán en el Word.")
+    figures: list[dict[str, object]] = []
+    for index, suggestion in enumerate(suggestions, start=1):
+        edited = ai_chart_editor(
+            df,
+            suggestion,
+            index,
+            continuous_vars=continuous_vars,
+            categorical_vars=categorical_vars,
+            max_categories=max_categories,
+        )
+        if edited and edited.get("include"):
+            spec = edited["spec"]
+            # Primero se intenta la exportacion PNG de Plotly (igual a lo que se ve
+            # en pantalla). Si falla (sin navegador/Kaleido), se usa matplotlib,
+            # que funciona headless en cualquier sistema operativo.
+            png = to_png_bytes(edited["fig"])
+            if not png:
+                png = ai_chart_to_png(
+                    df,
+                    spec,
+                    palette=get_palette_colors("Paleta Equi"),
+                    style=get_default_style_for_palette("Paleta Equi"),
+                )
+            if png:
+                figures.append(
+                    {
+                        "title": spec.get("title"),
+                        "caption": spec.get("caption"),
+                        "png": png,
+                    }
+                )
+            else:
+                st.caption(f"No se pudo preparar la imagen de la gráfica {index}; no se insertará en Word.")
+    return figures
+
+
+def clear_ai_chart_widget_state() -> None:
+    for key in list(st.session_state.keys()):
+        if key.startswith("ai_chart_") and key != "ai_chart_suggestions":
+            del st.session_state[key]
+
+
 def informe_ia_tab(
     df: pd.DataFrame,
     continuous_vars: list[str],
@@ -2527,6 +3014,29 @@ def informe_ia_tab(
             key="ai_cross_type",
         )
 
+    st.caption("Gráficas sugeridas")
+    col_max_charts, col_max_categories = st.columns(2)
+    with col_max_charts:
+        max_chart_suggestions = st.number_input(
+            "Máximo de gráficas sugeridas",
+            min_value=1,
+            max_value=10,
+            value=5,
+            step=1,
+            key="ai_max_chart_suggestions",
+            help="La IA sugerirá hasta este número de gráficas para acompañar el reporte.",
+        )
+    with col_max_categories:
+        max_chart_categories = st.number_input(
+            "Máximo de categorías por gráfica",
+            min_value=3,
+            max_value=50,
+            value=15,
+            step=1,
+            key="ai_max_chart_categories",
+            help="Evita gráficas de barras o pie con demasiadas categorías.",
+        )
+
     st.markdown("#### 4. Contexto e instrucciones (obligatorio)")
     user_context = st.text_area(
         "Describe el proyecto, la encuesta o el estudio y en qué debería enfocarse el "
@@ -2536,23 +3046,21 @@ def informe_ia_tab(
         height=140,
     )
 
+    socio_set = set(socioeconomic_vars)
+    report_continuous = list(
+        dict.fromkeys(
+            list(selected_continuous) + [v for v in continuous_vars if v in socio_set]
+        )
+    )
+    report_categorical = list(
+        dict.fromkeys(
+            list(selected_categorical) + [v for v in categorical_vars if v in socio_set]
+        )
+    )
+
     generate = st.button("Generar reporte", type="primary", width="stretch")
 
     if generate:
-        # Las variables socioeconomicas siempre se incluyen en el reporte,
-        # aunque el usuario las haya quitado de las listas de arriba.
-        socio_set = set(socioeconomic_vars)
-        report_continuous = list(
-            dict.fromkeys(
-                list(selected_continuous) + [v for v in continuous_vars if v in socio_set]
-            )
-        )
-        report_categorical = list(
-            dict.fromkeys(
-                list(selected_categorical) + [v for v in categorical_vars if v in socio_set]
-            )
-        )
-
         if not api_key.strip():
             st.error("Ingresa tu API key de Gemini para continuar.")
         elif not user_context.strip():
@@ -2604,23 +3112,46 @@ def informe_ia_tab(
                         n_rows=len(df),
                         n_vars=df.shape[1],
                         socioeconomic_vars=socioeconomic_vars,
+                        selected_continuous_vars=report_continuous,
+                        selected_categorical_vars=report_categorical,
+                        max_chart_suggestions=int(max_chart_suggestions),
+                        max_chart_categories=int(max_chart_categories),
                     )
-                    report = generate_report(
+                    raw_response = generate_report(
                         api_key.strip(),
                         AVAILABLE_MODELS[model_label],
                         prompt,
                     )
+                    report, raw_suggestions = split_report_response(raw_response)
+                    chart_suggestions = normalize_ai_chart_suggestions(
+                        raw_suggestions,
+                        df=df,
+                        continuous_vars=report_continuous,
+                        categorical_vars=report_categorical,
+                        max_suggestions=int(max_chart_suggestions),
+                        max_categories=int(max_chart_categories),
+                    )
+                    clear_ai_chart_widget_state()
                     st.session_state["ai_report_text"] = report
+                    st.session_state["ai_chart_suggestions"] = chart_suggestions
                 except Exception as exc:  # noqa: BLE001 - mostrar error al usuario
                     st.session_state["ai_report_text"] = None
+                    st.session_state["ai_chart_suggestions"] = []
                     st.error(f"No se pudo generar el reporte: {exc}")
 
     report_text = st.session_state.get("ai_report_text")
     if report_text:
         st.markdown("---")
         st.markdown(report_text)
+        figures_for_word = render_ai_chart_suggestions(
+            df,
+            st.session_state.get("ai_chart_suggestions", []),
+            continuous_vars=report_continuous,
+            categorical_vars=report_categorical,
+            max_categories=int(max_chart_categories),
+        )
         try:
-            docx_bytes = markdown_to_docx_bytes(report_text)
+            docx_bytes = markdown_to_docx_bytes(report_text, figures_for_word)
             st.download_button(
                 "Descargar en Word (.docx)",
                 docx_bytes,

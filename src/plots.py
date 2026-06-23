@@ -557,3 +557,282 @@ def to_png_bytes(fig: Figure) -> bytes | None:
         )
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# Render de respaldo con matplotlib (sin navegador ni Kaleido)
+# ---------------------------------------------------------------------------
+# Se usa para incrustar graficas en el Word cuando la exportacion PNG de Plotly
+# falla (por ejemplo, cuando no hay navegador headless disponible). matplotlib
+# funciona de forma headless en cualquier sistema operativo.
+
+# Paleta y estilo institucional (Paleta Equi), iguales a los del modulo de Graficos.
+_FALLBACK_COLORS = ["#020F50", "#1955A6", "#7CCCBF", "#F7966B", "#F4B21B", "#788EC7", "#B6C4E5", "#F4D2A4"]
+_EQUI_STYLE = {
+    "paper_bg": "#FFFFFF",
+    "plot_bg": "#FFFFFF",
+    "text_color": "#020F50",
+    "grid_color": "#B6C4E5",
+    "show_grid": True,
+}
+
+
+def _fmt_num(value: float, decimals: int) -> str:
+    rounded = round(float(value), decimals)
+    if float(rounded).is_integer():
+        return str(int(rounded))
+    return f"{rounded:.{decimals}f}".rstrip("0").rstrip(".")
+
+
+def _style_ai_axes(fig, ax, style: dict, effective_type: str) -> None:
+    """Aplica el estilo institucional (Paleta Equi) a los ejes de matplotlib."""
+    paper_bg = style.get("paper_bg", "#FFFFFF")
+    plot_bg = style.get("plot_bg", "#FFFFFF")
+    text_color = style.get("text_color", "#020F50")
+    grid_color = style.get("grid_color", "#B6C4E5")
+    show_grid = bool(style.get("show_grid", True))
+
+    fig.patch.set_facecolor(paper_bg)
+    ax.set_facecolor(plot_bg)
+
+    if effective_type == "pie":
+        return
+
+    ax.tick_params(colors=text_color, labelsize=9)
+    for label in list(ax.get_xticklabels()) + list(ax.get_yticklabels()):
+        label.set_color(text_color)
+    ax.xaxis.label.set_color(text_color)
+    ax.yaxis.label.set_color(text_color)
+    ax.xaxis.label.set_fontsize(11)
+    ax.yaxis.label.set_fontsize(11)
+
+    for spine_name, spine in ax.spines.items():
+        if spine_name in ("top", "right"):
+            spine.set_visible(False)
+        else:
+            spine.set_color(grid_color)
+
+    ax.set_axisbelow(True)
+    if show_grid:
+        if effective_type == "scatter":
+            ax.grid(True, color=grid_color, linewidth=0.6, alpha=0.7)
+        elif effective_type == "bar_h":
+            ax.grid(True, axis="x", color=grid_color, linewidth=0.6, alpha=0.7)
+            ax.grid(False, axis="y")
+        else:  # barras verticales, histograma
+            ax.grid(True, axis="y", color=grid_color, linewidth=0.6, alpha=0.7)
+            ax.grid(False, axis="x")
+    else:
+        ax.grid(False)
+
+    legend = ax.get_legend()
+    if legend is not None:
+        legend.get_frame().set_facecolor(paper_bg)
+        legend.get_frame().set_edgecolor(grid_color)
+        for text in legend.get_texts():
+            text.set_color(text_color)
+        if legend.get_title() is not None:
+            legend.get_title().set_color(text_color)
+
+
+def ai_chart_to_png(
+    df: pd.DataFrame,
+    spec: dict,
+    *,
+    palette: list[str] | None = None,
+    style: dict | None = None,
+    width_px: int = 900,
+    height_px: int = 520,
+) -> bytes | None:
+    """Renderiza una grafica del informe de IA a PNG usando matplotlib.
+
+    Es un respaldo robusto e independiente del sistema operativo, con el mismo
+    estilo institucional (Paleta Equi) que el modulo de Graficos. Soporta los
+    tipos bar, histogram, pie y scatter. Ignora 'facet' (agrega sobre el) para
+    mantener la robustez. Devuelve bytes PNG o None si falla.
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import numpy as np
+    except ImportError:
+        return None
+
+    from io import BytesIO
+
+    plt.rcParams["font.family"] = ["Geologica", "DejaVu Sans", "Arial", "sans-serif"]
+    colors = palette or _FALLBACK_COLORS
+    chart_style = dict(_EQUI_STYLE)
+    if style:
+        chart_style.update({key: style[key] for key in chart_style if key in style})
+    text_color = chart_style["text_color"]
+    chart_type = str(spec.get("chart_type") or "")
+    orient = str(spec.get("orientation") or "v")
+    x = spec.get("x")
+    y = spec.get("y")
+    color = spec.get("color")
+    title = str(spec.get("title") or "")
+    x_label = str(spec.get("x_label") or (x or ""))
+    y_label = str(spec.get("y_label") or "")
+    legend_title = str(spec.get("legend_title") or (color or ""))
+
+    fig = None
+    try:
+        fig, ax = plt.subplots(
+            figsize=(width_px / 110.0, height_px / 110.0),
+            dpi=110,
+            facecolor=chart_style["paper_bg"],
+        )
+
+        if chart_type == "bar":
+            percent = bool(spec.get("percent", True))
+            orientation = str(spec.get("orientation") or "v")
+            stacked = str(spec.get("barmode")) == "stack"
+            decimals = int(spec.get("label_decimals", 2))
+            show_labels = bool(spec.get("show_labels", True))
+            value_label = y_label or ("Porcentaje" if percent else "Frecuencia")
+
+            cols = [x] + ([color] if color else [])
+            data = df[cols].dropna().copy()
+            for c in cols:
+                data[c] = data[c].astype(str)
+            total = max(len(data), 1)
+
+            if color:
+                grouped = data.groupby([x, color]).size().reset_index(name="f")
+                grouped["v"] = grouped["f"] / total * 100 if percent else grouped["f"]
+                pivot = grouped.pivot(index=x, columns=color, values="v").fillna(0)
+                cats = [str(i) for i in pivot.index]
+                series = list(pivot.columns)
+                positions = np.arange(len(cats))
+                if stacked:
+                    base = np.zeros(len(cats))
+                    for i, s in enumerate(series):
+                        vals = pivot[s].to_numpy()
+                        if orientation == "h":
+                            ax.barh(positions, vals, left=base, label=str(s), color=colors[i % len(colors)])
+                        else:
+                            ax.bar(positions, vals, bottom=base, label=str(s), color=colors[i % len(colors)])
+                        base += vals
+                else:
+                    n = max(len(series), 1)
+                    bar_w = 0.8 / n
+                    for i, s in enumerate(series):
+                        vals = pivot[s].to_numpy()
+                        offset = (i - (n - 1) / 2) * bar_w
+                        if orientation == "h":
+                            ax.barh(positions + offset, vals, height=bar_w, label=str(s), color=colors[i % len(colors)])
+                        else:
+                            ax.bar(positions + offset, vals, width=bar_w, label=str(s), color=colors[i % len(colors)])
+                if orientation == "h":
+                    ax.set_yticks(positions)
+                    ax.set_yticklabels(cats)
+                else:
+                    ax.set_xticks(positions)
+                    ax.set_xticklabels(cats, rotation=30, ha="right")
+                ax.legend(title=legend_title, fontsize=8)
+            else:
+                grouped = data.groupby(x).size().reset_index(name="f")
+                grouped["v"] = grouped["f"] / total * 100 if percent else grouped["f"]
+                cats = [str(i) for i in grouped[x].tolist()]
+                vals = grouped["v"].to_numpy()
+                positions = np.arange(len(cats))
+                suffix = "%" if percent else ""
+                if orientation == "h":
+                    ax.barh(positions, vals, color=colors[0])
+                    ax.set_yticks(positions)
+                    ax.set_yticklabels(cats)
+                    if show_labels:
+                        for p, v in zip(positions, vals):
+                            ax.text(v, p, " " + _fmt_num(v, decimals) + suffix, va="center", fontsize=8)
+                else:
+                    ax.bar(positions, vals, color=colors[0])
+                    ax.set_xticks(positions)
+                    ax.set_xticklabels(cats, rotation=30, ha="right")
+                    if show_labels:
+                        for p, v in zip(positions, vals):
+                            ax.text(p, v, _fmt_num(v, decimals) + suffix, ha="center", va="bottom", fontsize=8)
+
+            if orientation == "h":
+                ax.set_xlabel(value_label)
+                ax.set_ylabel(x_label)
+            else:
+                ax.set_xlabel(x_label)
+                ax.set_ylabel(value_label)
+
+        elif chart_type == "histogram":
+            bins = int(spec.get("bins", 30) or 30)
+            if color and color in df.columns:
+                groups = df[[x, color]].copy()
+                groups[x] = _coerce_numeric(groups[x])
+                groups = groups.dropna(subset=[x, color])
+                cats = [str(c) for c in groups[color].astype(str).unique()]
+                data_list = [groups[groups[color].astype(str) == c][x].to_numpy() for c in cats]
+                ax.hist(data_list, bins=bins, stacked=True, label=cats,
+                        color=[colors[i % len(colors)] for i in range(len(cats))])
+                ax.legend(title=legend_title, fontsize=8)
+            else:
+                values = _coerce_numeric(df[x]).dropna().to_numpy()
+                ax.hist(values, bins=bins, color=colors[0])
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label or "Frecuencia")
+
+        elif chart_type == "pie":
+            hole = float(spec.get("hole", 0.52) or 0)
+            decimals = int(spec.get("label_decimals", 1))
+            data = df[x].dropna().astype(str)
+            counts = data.value_counts(sort=False)
+            wedge_kw = {"width": 1 - hole} if hole and hole > 0 else {}
+            ax.pie(
+                counts.to_numpy(),
+                labels=[str(i) for i in counts.index],
+                autopct=lambda p: _fmt_num(p, decimals) + "%",
+                colors=[colors[i % len(colors)] for i in range(len(counts))],
+                wedgeprops=wedge_kw,
+                textprops={"fontsize": 8},
+            )
+            ax.axis("equal")
+
+        elif chart_type == "scatter":
+            sub = pd.DataFrame({
+                "x": _coerce_numeric(df[x]),
+                "y": _coerce_numeric(df[y]),
+            })
+            if color and color in df.columns:
+                sub["g"] = df[color].astype(str)
+                sub = sub.dropna(subset=["x", "y"])
+                for i, (group, gdata) in enumerate(sub.groupby("g")):
+                    ax.scatter(gdata["x"], gdata["y"], s=18, alpha=0.7, label=str(group), color=colors[i % len(colors)])
+                ax.legend(title=legend_title, fontsize=8)
+            else:
+                sub = sub.dropna(subset=["x", "y"])
+                ax.scatter(sub["x"], sub["y"], s=18, alpha=0.7, color=colors[0])
+            if bool(spec.get("show_trendline", False)) and len(sub) >= 2:
+                slope, intercept = np.polyfit(sub["x"].to_numpy(), sub["y"].to_numpy(), 1)
+                line_x = np.linspace(sub["x"].min(), sub["x"].max(), 100)
+                ax.plot(line_x, slope * line_x + intercept, color="#F7966B", linewidth=2)
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label or str(y or ""))
+
+        else:
+            plt.close(fig)
+            return None
+
+        effective_type = "bar_h" if (chart_type == "bar" and orient == "h") else chart_type
+        _style_ai_axes(fig, ax, chart_style, effective_type)
+        if title:
+            ax.set_title(title, fontsize=13, fontweight="bold", color=text_color, loc="center", pad=12)
+        fig.tight_layout()
+        buffer = BytesIO()
+        fig.savefig(buffer, format="png", bbox_inches="tight", facecolor=fig.get_facecolor())
+        plt.close(fig)
+        buffer.seek(0)
+        return buffer.getvalue()
+    except Exception:
+        try:
+            if fig is not None:
+                plt.close(fig)
+        except Exception:
+            pass
+        return None

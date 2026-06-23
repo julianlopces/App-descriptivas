@@ -11,6 +11,7 @@ preciso y mas seguro para datos de encuesta.
 
 from __future__ import annotations
 
+import json
 import re
 from io import BytesIO
 from typing import Any
@@ -62,7 +63,9 @@ Organiza los hallazgos por temas o dimensiones, no necesariamente variable por v
 
 Analiza los cruces disponibles buscando diferencias relevantes entre grupos, asociaciones descriptivas y patrones de segmentación. Prioriza los cruces entre variables directamente relacionadas con los objetivos del estudio y variables de resultado, participación, exposición, satisfacción, finalización, postulación, territorio, modalidad, zona, sexo, edad u otros grupos relevantes según el contexto.
 
-En esta sección, no te limites a describir frecuencias aisladas. Explica qué relación se observa, entre qué grupos aparece la diferencia, qué tan relevante parece ser y qué precauciones deben tenerse. Usa lenguaje descriptivo como "se observa", "los datos sugieren", "parece haber una diferencia" o "este patrón podría indicar". No hagas afirmaciones causales ni reportes significancia estadística si no está incluida en las tablas.
+Cada relación que describas DEBE estar cuantificada con las cifras de las tablas. No escribas que existe una diferencia, una asociación, una tendencia o un patrón sin acompañarlo del dato que lo respalda. Indica siempre los valores comparados de cada grupo y la magnitud de la diferencia (por ejemplo, el porcentaje de cada categoría, la diferencia en puntos porcentuales, las medias por grupo o los conteos), ya sea dentro de la frase o entre paréntesis. Ejemplo del nivel de sustento exigido: "la participación es mayor en zonas urbanas (62%) que en rurales (41%), una diferencia de 21 puntos porcentuales". Si una relación no puede cuantificarse con las tablas provistas, no la afirmes: menciónala como un cruce pendiente de analizar en los próximos pasos.
+
+No te limites a describir frecuencias aisladas. Explica qué relación se observa, entre qué grupos aparece la diferencia, qué tan relevante parece ser y qué precauciones deben tenerse, siempre con las cifras de respaldo. Usa lenguaje descriptivo como "se observa", "los datos sugieren", "parece haber una diferencia" o "este patrón podría indicar". No hagas afirmaciones causales ni reportes significancia estadística si no está incluida en las tablas.
 
 ## 6. Calidad de los datos y limitaciones
 
@@ -75,6 +78,7 @@ Presenta recomendaciones concretas para profundizar el análisis. En esta secci�
 Reglas finales:
 
 * Basa todo el reporte únicamente en las cifras provistas.
+* Cada afirmación sobre la composición de la muestra, los hallazgos descriptivos o las relaciones entre variables debe ir acompañada del dato que la sustenta (cifra, porcentaje, diferencia en puntos porcentuales, media o n), expresado en el texto o entre paréntesis. No incluyas afirmaciones cualitativas sin su respaldo numérico; si no tienes el dato, no hagas la afirmación.
 * No inventes datos, porcentajes, tamaños de muestra ni conclusiones.
 * No uses conocimiento externo salvo para interpretar de forma general el tipo de análisis.
 * No incluyas código.
@@ -83,7 +87,53 @@ Reglas finales:
 * Sé claro cuando una interpretación sea tentativa.
 * Evita bullets en el resumen ejecutivo, contexto, composición de muestra, hallazgos descriptivos, relaciones entre variables y limitaciones.
 * Usa bullets o listas solo cuando ayuden a organizar recomendaciones finales o advertencias muy puntuales.
-* El resultado debe ser un borrador revisable por una persona antes de su uso."""
+* El resultado debe ser un borrador revisable por una persona antes de su uso.
+
+Además del informe, sugiere gráficas que acompañen los hallazgos principales. No inventes variables y usa únicamente las variables seleccionadas por el usuario. Evita sugerir gráficos con demasiadas categorías o poco valor interpretativo.
+
+Debes devolver la respuesta con este formato exacto:
+
+<REPORT_MARKDOWN>
+Aquí va únicamente el informe en Markdown.
+</REPORT_MARKDOWN>
+
+<CHART_SUGGESTIONS_JSON>
+[
+  {
+    "chart_type": "bar",
+    "title": "Título claro para la gráfica",
+    "x": "variable_principal",
+    "y": null,
+    "color": "variable_opcional_o_null",
+    "facet": "variable_opcional_o_null",
+    "percent": true,
+    "barmode": "group",
+    "orientation": "v",
+    "show_labels": true,
+    "bins": null,
+    "hole": 0.52,
+    "show_trendline": false,
+    "trendline_scope": "overall",
+    "x_label": "Etiqueta eje X",
+    "y_label": "Etiqueta eje Y",
+    "legend_title": "Título de leyenda",
+    "caption": "Texto breve que explique por qué esta gráfica acompaña el reporte."
+  }
+]
+</CHART_SUGGESTIONS_JSON>
+
+Reglas para el JSON:
+
+* Devuelve JSON válido, sin comentarios ni Markdown dentro del bloque JSON. No uses cercas de código (```), comas finales ni texto fuera del arreglo.
+* Devuelve EXACTAMENTE la cantidad de gráficas solicitada por el usuario siempre que existan suficientes variables adecuadas. Solo devuelve menos si no hay variables con valor interpretativo suficiente para alcanzar ese número; en ese caso, devuelve todas las que sí apliquen.
+* Cierra siempre el arreglo con ] y el bloque con </CHART_SUGGESTIONS_JSON>.
+* `chart_type` debe ser uno de: "bar", "histogram", "scatter", "pie".
+* Para barras usa `x` como variable categórica principal. `color` y `facet` son opcionales.
+* Para histogramas usa `x` como variable continua. `color` es opcional.
+* Para dispersión usa `x` e `y` como variables continuas. `color` es opcional.
+* Para pie usa `x` como variable categórica de proporción. `facet` es opcional.
+* Si un campo no aplica, usa null, false o un valor razonable según el tipo.
+* Cada sugerencia debe tener `title`, etiquetas y `caption`."""
 
 
 # ---------------------------------------------------------------------------
@@ -293,6 +343,10 @@ def build_prompt(
     n_rows: int,
     n_vars: int,
     socioeconomic_vars: list[str],
+    selected_continuous_vars: list[str] | None = None,
+    selected_categorical_vars: list[str] | None = None,
+    max_chart_suggestions: int = 5,
+    max_chart_categories: int = 15,
 ) -> str:
     """Construye el prompt final: instruccion base + insumos (contexto, diccionario, datos).
 
@@ -301,6 +355,16 @@ def build_prompt(
     """
     dictionary_text = _descriptions_to_markdown(variable_descriptions)
     socio_text = ", ".join(socioeconomic_vars) if socioeconomic_vars else "(no se indicaron)"
+    continuous_text = (
+        ", ".join(selected_continuous_vars or [])
+        if selected_continuous_vars
+        else "(no se indicaron variables continuas)"
+    )
+    categorical_text = (
+        ", ".join(selected_categorical_vars or [])
+        if selected_categorical_vars
+        else "(no se indicaron variables categóricas)"
+    )
 
     return f"""{SYSTEM_INSTRUCTION}
 
@@ -321,6 +385,14 @@ def build_prompt(
 ## Variables socioeconomicas / de caracterizacion (obligatorias)
 Las siguientes variables fueron marcadas como socioeconomicas o de caracterizacion y DEBEN usarse para describir la composicion de la muestra en la seccion correspondiente: {socio_text}
 
+## Variables disponibles para sugerir graficas
+- Continuas seleccionadas: {continuous_text}
+- Categoricas seleccionadas: {categorical_text}
+- Numero de graficas a sugerir: exactamente {max_chart_suggestions} si hay suficientes variables adecuadas; si no, todas las que tengan valor interpretativo.
+- Usa unicamente las variables seleccionadas listadas arriba; no inventes ni uses otras.
+- Evita repetir la misma variable principal en mas de una grafica salvo que aporte una vista claramente distinta.
+- Evita graficas de barras o pie cuando la variable principal tenga mas de {max_chart_categories} categorias.
+
 ## 3 a 5. Datos calculados por la aplicacion (unica fuente de cifras permitida)
 {data_context}
 """
@@ -330,7 +402,13 @@ Las siguientes variables fueron marcadas como socioeconomicas o de caracterizaci
 # Llamada al modelo
 # ---------------------------------------------------------------------------
 
-def generate_report(api_key: str, model: str, prompt: str) -> str:
+def generate_report(
+    api_key: str,
+    model: str,
+    prompt: str,
+    *,
+    max_output_tokens: int = 16384,
+) -> str:
     """Llama a la API de Gemini y devuelve el texto del reporte.
 
     Lanza RuntimeError con un mensaje claro si falta la dependencia, si la
@@ -344,7 +422,20 @@ def generate_report(api_key: str, model: str, prompt: str) -> str:
         ) from exc
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(model=model, contents=prompt)
+
+    # Se fija un limite alto de tokens de salida para que el informe junto con el
+    # bloque de graficas no se trunquen (un JSON cortado deja sin sugerencias).
+    config = None
+    try:
+        from google.genai import types
+        config = types.GenerateContentConfig(max_output_tokens=max_output_tokens)
+    except Exception:  # noqa: BLE001 - si la version del SDK no lo soporta
+        config = None
+
+    if config is not None:
+        response = client.models.generate_content(model=model, contents=prompt, config=config)
+    else:
+        response = client.models.generate_content(model=model, contents=prompt)
 
     text = getattr(response, "text", None)
     if not text or not text.strip():
@@ -353,6 +444,110 @@ def generate_report(api_key: str, model: str, prompt: str) -> str:
             "o los limites de uso de tu cuenta."
         )
     return text
+
+
+# ---------------------------------------------------------------------------
+# Separacion del reporte y las sugerencias de graficas
+# ---------------------------------------------------------------------------
+
+REPORT_START = "<REPORT_MARKDOWN>"
+REPORT_END = "</REPORT_MARKDOWN>"
+CHARTS_START = "<CHART_SUGGESTIONS_JSON>"
+CHARTS_END = "</CHART_SUGGESTIONS_JSON>"
+
+
+def _strip_code_fences(text: str) -> str:
+    """Quita cercas de codigo tipo ```json ... ``` alrededor del bloque."""
+    cleaned = text.strip()
+    cleaned = re.sub(r"^```[a-zA-Z0-9]*\s*", "", cleaned)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    return cleaned.strip()
+
+
+def _salvage_chart_objects(raw: str) -> list[dict[str, Any]]:
+    """Rescata objetos {...} de un JSON malformado o truncado.
+
+    Escanea el texto contando llaves (ignorando las que estan dentro de cadenas)
+    y trata de parsear cada objeto de nivel superior. Asi, aunque el arreglo no
+    cierre con ']' o el ultimo objeto venga cortado, se recuperan los completos.
+    """
+    objects: list[dict[str, Any]] = []
+    depth = 0
+    start: int | None = None
+    in_string = False
+    escape = False
+
+    for index, char in enumerate(raw):
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            if depth == 0:
+                start = index
+            depth += 1
+        elif char == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start is not None:
+                    candidate = raw[start : index + 1]
+                    try:
+                        parsed = json.loads(candidate)
+                        if isinstance(parsed, dict):
+                            objects.append(parsed)
+                    except json.JSONDecodeError:
+                        pass
+                    start = None
+    return objects
+
+
+def split_report_response(response_text: str) -> tuple[str, list[dict[str, Any]]]:
+    """Separa el Markdown del reporte y el JSON de graficas sugeridas.
+
+    Es tolerante a respuestas imperfectas del modelo: acepta que falte la
+    etiqueta de cierre, quita cercas de codigo y rescata objetos de un JSON
+    parcial o truncado. Si no hay bloque de graficas, devuelve lista vacia.
+    """
+    text = response_text.strip()
+
+    # --- Reporte en Markdown ---
+    report = text
+    if REPORT_START in text:
+        after_start = text.split(REPORT_START, 1)[1]
+        if REPORT_END in after_start:
+            report = after_start.split(REPORT_END, 1)[0].strip()
+        else:
+            # Sin etiqueta de cierre: tomar hasta el bloque de graficas o el final.
+            report = after_start.split(CHARTS_START, 1)[0].strip()
+    elif CHARTS_START in text:
+        report = text.split(CHARTS_START, 1)[0].strip()
+
+    # --- Sugerencias de graficas ---
+    suggestions: list[dict[str, Any]] = []
+    if CHARTS_START in text:
+        raw_json = text.split(CHARTS_START, 1)[1]
+        if CHARTS_END in raw_json:
+            raw_json = raw_json.split(CHARTS_END, 1)[0]
+        raw_json = _strip_code_fences(raw_json)
+
+        try:
+            parsed = json.loads(raw_json)
+            if isinstance(parsed, list):
+                suggestions = [item for item in parsed if isinstance(item, dict)]
+        except json.JSONDecodeError:
+            suggestions = []
+
+        # Si el parseo directo fallo o vino vacio, rescatar objetos completos.
+        if not suggestions:
+            suggestions = _salvage_chart_objects(raw_json)
+
+    return report, suggestions
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +569,10 @@ def _add_runs_with_bold(paragraph, text: str) -> None:
             paragraph.add_run(part)
 
 
-def markdown_to_docx_bytes(markdown_text: str) -> bytes:
+def markdown_to_docx_bytes(
+    markdown_text: str,
+    figures: list[dict[str, Any]] | None = None,
+) -> bytes:
     """Convierte el reporte en Markdown a un documento Word (.docx) editable.
 
     Soporta encabezados (#..####), listas con viñetas y numeradas, tablas
@@ -382,6 +580,7 @@ def markdown_to_docx_bytes(markdown_text: str) -> bytes:
     """
     try:
         from docx import Document
+        from docx.shared import Inches
     except ImportError as exc:  # pragma: no cover - depende del entorno
         raise RuntimeError(
             "Falta la dependencia 'python-docx'. Instalala con: uv add python-docx"
@@ -446,6 +645,20 @@ def markdown_to_docx_bytes(markdown_text: str) -> bytes:
         paragraph = document.add_paragraph()
         _add_runs_with_bold(paragraph, stripped)
         index += 1
+
+    if figures:
+        document.add_page_break()
+        document.add_heading("Gráficas sugeridas", level=1)
+        for index, figure in enumerate(figures, start=1):
+            title = str(figure.get("title") or f"Gráfica sugerida {index}")
+            caption = str(figure.get("caption") or "").strip()
+            image_bytes = figure.get("png")
+            document.add_heading(f"Figura {index}. {title}", level=2)
+            if image_bytes:
+                document.add_picture(BytesIO(image_bytes), width=Inches(6.5))
+            if caption:
+                paragraph = document.add_paragraph()
+                _add_runs_with_bold(paragraph, caption)
 
     buffer = BytesIO()
     document.save(buffer)
