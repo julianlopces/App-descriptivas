@@ -25,6 +25,15 @@ from src.descriptive_stats import (
     continuous_summary,
     detect_variable_types,
 )
+from src.ai_report import (
+    AVAILABLE_MODELS,
+    build_data_context,
+    build_prompt,
+    build_variable_descriptions,
+    generate_report,
+    inspect_dictionary_file,
+    markdown_to_docx_bytes,
+)
 from src.palettes import (
     get_available_palettes,
     get_default_style_for_palette,
@@ -80,7 +89,7 @@ def inject_styles() -> None:
 
 
 def inject_sidebar_dark_css() -> None:
-    """Sidebar azul oscuro institucional — solo activo cuando hay dataset cargado."""
+    """Sidebar azul oscuro institucional â€” solo activo cuando hay dataset cargado."""
     primary = INSTITUTIONAL_COLORS["primary"]  # #020F50
     st.markdown(
         f"""
@@ -112,7 +121,7 @@ def inject_sidebar_dark_css() -> None:
             color: rgba(255,255,255,0.55) !important;
             letter-spacing: 0.06em;
         }}
-        /* Dataset card — fondo plomo claro con texto oscuro */
+        /* Dataset card â€” fondo plomo claro con texto oscuro */
         [data-testid="stSidebar"] .dataset-card {{
             background: #E2E8F0 !important;
             border: 1px solid #CBD5E1 !important;
@@ -198,7 +207,7 @@ def inject_sidebar_dark_css() -> None:
         [data-testid="stSidebar"] div[data-testid="stButton"] button[kind="primary"]:hover {{
             background: rgba(255,255,255,0.28) !important;
         }}
-        /* Dropdown opciones (popover) — fondo blanco para legibilidad */
+        /* Dropdown opciones (popover) â€” fondo blanco para legibilidad */
         [data-baseweb="popover"] [data-baseweb="menu"],
         [data-baseweb="popover"] ul {{
             background: #FFFFFF !important;
@@ -310,7 +319,7 @@ def render_styled_table(
             step=1,
             key=f"{key_prefix}_table_decimals",
         )
-    st.dataframe(style_table(table, int(max_decimals)), use_container_width=True, height=height)
+    st.dataframe(style_table(table, int(max_decimals)), width="stretch", height=height)
 
 
 def init_state() -> None:
@@ -321,6 +330,7 @@ def init_state() -> None:
         "continuous_vars": [],
         "categorical_vars": [],
         "custom_missing_values": "",
+        "ai_report_text": None,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -660,7 +670,7 @@ def load_controls() -> None:
                 index=0,
             )
 
-    if st.button("Cargar dataset", type="primary", use_container_width=True):
+    if st.button("Cargar dataset", type="primary", width="stretch"):
         loading_placeholder = st.empty()
         try:
             loading_placeholder.markdown(
@@ -1142,7 +1152,7 @@ def render_landing_page() -> None:
         logo_data_uri = get_logo_data_uri()
 
     # ------------------------------------------------------------------ #
-    # CSS condicional — solo activo mientras no hay dataset               #
+    # CSS condicional â€” solo activo mientras no hay dataset               #
     # ------------------------------------------------------------------ #
     st.markdown(
         f"""
@@ -1168,7 +1178,7 @@ def render_landing_page() -> None:
             margin: 0 auto !important;
         }}
 
-        /* ── Dropzone: fondo plomo claro, borde continuo ────────────── */
+        /* â”€â”€ Dropzone: fondo plomo claro, borde continuo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         [data-testid="stFileUploaderDropzone"] {{
             background: #F1F5F9 !important;
             border: 1px solid #94A3B8 !important;
@@ -1184,7 +1194,7 @@ def render_landing_page() -> None:
             padding: 2.5rem !important;
             text-align: center !important;
         }}
-        /* Ocultar SOLO el texto nativo de límite (e.g. "200MB per file") — NO el bloque del archivo */
+        /* Ocultar SOLO el texto nativo de lÃ­mite (e.g. "200MB per file") â€” NO el bloque del archivo */
         .stFileUploader > section > div [data-testid="stMarkdownContainer"] {{
             display: none !important;
         }}
@@ -1206,7 +1216,7 @@ def render_landing_page() -> None:
             font-size: 0.85rem !important;
             font-weight: 400 !important;
         }}
-        /* ── Pastilla del archivo cargado ────────────────────────────── */
+        /* â”€â”€ Pastilla del archivo cargado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         [data-testid="stFileUploaderFileData"] {{
             display: flex !important;
             background-color: #E2E8F0 !important;
@@ -1227,7 +1237,7 @@ def render_landing_page() -> None:
             outline: none !important;
             box-shadow: none !important;
         }}
-        /* Trazos internos del icono de tabla en blanco — todas las pestañas */
+        /* Trazos internos del icono de tabla en blanco â€” todas las pestaÃ±as */
         [data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] svg path,
         [data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] svg rect,
         [data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] svg line,
@@ -1256,7 +1266,7 @@ def render_landing_page() -> None:
             color: #1E293B !important;
         }}
 
-        /* ── Chip del archivo cargado: fondo blanco, texto oscuro ─────── */
+        /* â”€â”€ Chip del archivo cargado: fondo blanco, texto oscuro â”€â”€â”€â”€â”€â”€â”€ */
         [data-testid="stFileUploaderFile"],
         [data-testid="stUploadedFile"] {{
             background: #FFFFFF !important;
@@ -1281,13 +1291,13 @@ def render_landing_page() -> None:
             fill: #1E293B !important;
             color: #1E293B !important;
         }}
-        /* ── Widget labels (etiquetas de todos los inputs) ───────────── */
+        /* â”€â”€ Widget labels (etiquetas de todos los inputs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         [data-testid="stWidgetLabel"],
         [data-testid="stWidgetLabel"] * {{
             color: rgba(255,255,255,0.85) !important;
         }}
 
-        /* ── Expander "Opciones de lectura" ──────────────────────────── */
+        /* â”€â”€ Expander "Opciones de lectura" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         [data-testid="stExpander"] details,
         [data-testid="stExpander"] details summary {{
             background: rgba(255,255,255,0.07) !important;
@@ -1310,7 +1320,7 @@ def render_landing_page() -> None:
             border-color: rgba(255,255,255,0.15) !important;
         }}
 
-        /* ── Selectbox cerrado (campo visible) ───────────────────────── */
+        /* â”€â”€ Selectbox cerrado (campo visible) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         [data-testid="stExpander"] [data-baseweb="select"] > div {{
             background: rgba(255,255,255,0.12) !important;
             border-color: rgba(255,255,255,0.30) !important;
@@ -1329,7 +1339,7 @@ def render_landing_page() -> None:
             fill: currentColor !important;
         }}
 
-        /* ── Dropdown abierto (popover/menú de opciones) ─────────────── */
+        /* â”€â”€ Dropdown abierto (popover/menÃº de opciones) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         /* Fondo blanco con texto oscuro para máximo contraste           */
         [data-baseweb="popover"] [data-baseweb="menu"],
         [data-baseweb="popover"] ul {{
@@ -1345,7 +1355,7 @@ def render_landing_page() -> None:
             background: rgba(2,15,80,0.08) !important;
         }}
 
-        /* ── Botón principal de carga: alto contraste sobre fondo azul ─ */
+        /* â”€â”€ BotÃ³n principal de carga: alto contraste sobre fondo azul â”€ */
         div[data-testid="stButton"] button[kind="primary"] {{
             background: #F7966B !important;
             border: 1px solid #F7966B !important;
@@ -1423,7 +1433,7 @@ def render_landing_page() -> None:
         csv_encoding = "utf-8"
         csv_separator = "Auto"
 
-        # El expander reacciona reactivamente: Excel → hoja; CSV/otro → encoding+sep
+        # El expander reacciona reactivamente: Excel â†’ hoja; CSV/otro â†’ encoding+sep
         with st.expander("Opciones de lectura", expanded=bool(uploaded)):
             if uploaded and suffix in {"xlsx", "xls"}:
                 try:
@@ -1439,7 +1449,7 @@ def render_landing_page() -> None:
                     "Separador", ["Auto", ",", ";", "\\t", "|"], index=0
                 )
 
-        if st.button("Cargar dataset", type="primary", use_container_width=True):
+        if st.button("Cargar dataset", type="primary", width="stretch"):
             if uploaded is None:
                 st.warning("Primero selecciona un archivo.")
             else:
@@ -1514,7 +1524,7 @@ def continuous_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
                 dataframe_to_csv_bytes(table),
                 "descriptivas_continuas.csv",
                 "text/csv",
-                use_container_width=True,
+                width="stretch",
             )
         with col_xlsx:
             st.download_button(
@@ -1522,7 +1532,7 @@ def continuous_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
                 dataframe_to_excel_bytes(table, "continuas"),
                 "descriptivas_continuas.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
             )
     panel_end()
     return table
@@ -1552,7 +1562,7 @@ def categorical_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
                 dataframe_to_csv_bytes(table),
                 "descriptivas_categoricas.csv",
                 "text/csv",
-                use_container_width=True,
+                width="stretch",
             )
         with col_xlsx:
             st.download_button(
@@ -1560,7 +1570,7 @@ def categorical_tab(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
                 dataframe_to_excel_bytes(table, "categoricas"),
                 "descriptivas_categoricas.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
             )
     panel_end()
     return table
@@ -1600,7 +1610,7 @@ def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFra
                 dataframe_to_csv_bytes(export_table),
                 "tabla_cruzada.csv",
                 "text/csv",
-                use_container_width=True,
+                width="stretch",
             )
         with col_xlsx:
             st.download_button(
@@ -1608,7 +1618,7 @@ def contingency_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataFra
                 dataframe_to_excel_bytes(export_table, "tabla_cruzada"),
                 "tabla_cruzada.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
             )
         panel_end()
 
@@ -1736,7 +1746,7 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             with add_col:
                 if st.button(
                     "+ Agregar tabla",
-                    use_container_width=True,
+                    width="stretch",
                     disabled=int(st.session_state.cross_manual_count) >= max_manual_tables,
                     key="cross_add_manual_table",
                 ):
@@ -1748,7 +1758,7 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             with remove_col:
                 if st.button(
                     "Quitar última",
-                    use_container_width=True,
+                    width="stretch",
                     disabled=int(st.session_state.cross_manual_count) <= 1,
                     key="cross_remove_manual_table",
                 ):
@@ -1798,7 +1808,7 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
                 excel_buffer.getvalue(),
                 "tablas_cruzadas_manual.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 key="cross_manual_download_excel",
                 help="Descarga un Excel con una hoja única y las tablas manuales configuradas.",
             )
@@ -1873,7 +1883,7 @@ def mass_crosstab_tab(df: pd.DataFrame, categorical_vars: list[str]) -> pd.DataF
             excel_buffer.getvalue(),
             "tablas_cruzadas_desagregadas.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
             key="cross_download_excel",
             help="Descarga un Excel con una hoja única y las tablas agrupadas por variable principal.",
         )
@@ -2235,7 +2245,7 @@ def charts_tab(df: pd.DataFrame, continuous_vars: list[str], categorical_vars: l
     apply_axis_ranges(fig, axis_ranges)
     with preview_panel:
         panel_start("Vista del gráfico", "Personalizable y listo para incluir en informes.")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         png = to_png_bytes(fig)
         if png:
             st.download_button("Descargar PNG", png, "grafico.png", "image/png")
@@ -2268,7 +2278,7 @@ def export_tab(tables: dict[str, pd.DataFrame]) -> None:
                     dataframe_to_csv_bytes(table),
                     f"{name}.csv",
                     "text/csv",
-                    use_container_width=True,
+                    width="stretch",
                     key=f"export_{name}_csv",
                 )
             with col_xlsx:
@@ -2277,7 +2287,7 @@ def export_tab(tables: dict[str, pd.DataFrame]) -> None:
                     dataframe_to_excel_bytes(table, name),
                     f"{name}.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
+                    width="stretch",
                     key=f"export_{name}_xlsx",
                 )
 
@@ -2286,7 +2296,7 @@ def export_tab(tables: dict[str, pd.DataFrame]) -> None:
             tables_to_excel_bytes(available),
             "tablas_descriptivas.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
         )
     panel_end()
 
@@ -2396,6 +2406,234 @@ def instructions_tab() -> None:
     panel_end()
 
 
+def informe_ia_tab(
+    df: pd.DataFrame,
+    continuous_vars: list[str],
+    categorical_vars: list[str],
+) -> None:
+    panel_start(
+        "Informe IA",
+        "Genera un borrador de reporte descriptivo con Gemini a partir de tus tablas.",
+    )
+
+    st.markdown("#### 1. Conexión con Gemini")
+    col_key, col_model = st.columns([2, 1])
+    with col_key:
+        api_key = st.text_input(
+            "API key de Gemini",
+            type="password",
+            key="ai_api_key",
+            help="Tu clave se usa solo durante esta sesión para llamar al modelo; no se guarda en el repositorio.",
+        )
+    with col_model:
+        model_label = st.selectbox(
+            "Modelo",
+            list(AVAILABLE_MODELS.keys()),
+            key="ai_model_label",
+        )
+
+    st.markdown("#### 2. Diccionario de variables (obligatorio)")
+    dict_file = st.file_uploader(
+        "Sube un formulario ODK o un diccionario de variables (CSV/XLSX/XLS)",
+        type=["xlsx", "xls", "csv"],
+        key="ai_dict_file",
+        help=(
+            "Este archivo es obligatorio para que el reporte use nombres, etiquetas "
+            "y descripciones correctas de las variables."
+        ),
+    )
+    variable_descriptions: dict[str, str] = {}
+    if dict_file is not None:
+        try:
+            dict_info = inspect_dictionary_file(dict_file)
+        except Exception as exc:  # noqa: BLE001 - mostrar error al usuario
+            dict_info = None
+            st.error(f"No se pudo leer el diccionario: {exc}")
+
+        if dict_info is not None:
+            if dict_info["kind"] == "odk":
+                name_col = dict_info["name_col"]
+                label_col = dict_info["label_col"]
+                st.success(
+                    f"Formulario ODK detectado. Uso la hoja 'survey', la columna "
+                    f"'{name_col}' como nombre de variable y '{label_col}' como descripción."
+                )
+            else:
+                st.info(
+                    "El archivo no tiene la estructura ODK estándar. Indica qué columna "
+                    "corresponde al nombre de variable y cuál a la descripción."
+                )
+                columns = dict_info["columns"]
+                col_name_sel, col_label_sel = st.columns(2)
+                with col_name_sel:
+                    name_col = st.selectbox(
+                        "Columna de nombre de variable",
+                        columns,
+                        key="ai_dict_name_col",
+                    )
+                with col_label_sel:
+                    label_col = st.selectbox(
+                        "Columna de descripción",
+                        columns,
+                        index=min(1, len(columns) - 1) if columns else 0,
+                        key="ai_dict_label_col",
+                    )
+            variable_descriptions = build_variable_descriptions(
+                dict_info["df"], name_col, label_col
+            )
+            if variable_descriptions:
+                st.caption(f"Se cargaron {len(variable_descriptions)} descripciones de variables.")
+
+    st.markdown("#### 3. Datos que verá la IA")
+    all_vars = list(continuous_vars) + list(categorical_vars)
+    socioeconomic_vars = st.multiselect(
+        "Variables socioeconómicas / de caracterización (obligatorio)",
+        all_vars,
+        key="ai_socioeconomic",
+        help="Variables que permiten caracterizar la muestra (p. ej. sexo, edad, zona, "
+        "nivel educativo, condición socioeconómica). Se incluyen siempre en el reporte.",
+    )
+    selected_continuous = st.multiselect(
+        "Variables continuas a incluir",
+        continuous_vars,
+        default=continuous_vars,
+        key="ai_continuous",
+    )
+    selected_categorical = st.multiselect(
+        "Variables categóricas a incluir",
+        categorical_vars,
+        default=categorical_vars,
+        key="ai_categorical",
+    )
+
+    st.caption("Tablas cruzadas (opcional)")
+    col_main, col_disagg, col_type = st.columns(3)
+    with col_main:
+        cross_main = st.multiselect(
+            "Variables principales",
+            categorical_vars,
+            key="ai_cross_main",
+        )
+    with col_disagg:
+        cross_disagg = st.multiselect(
+            "Variables de desagregación",
+            categorical_vars,
+            key="ai_cross_disagg",
+        )
+    with col_type:
+        cross_type_label = st.selectbox(
+            "Tipo de tabla cruzada",
+            list(TABLE_TYPE_LABELS.values()),
+            key="ai_cross_type",
+        )
+
+    st.markdown("#### 4. Contexto e instrucciones (obligatorio)")
+    user_context = st.text_area(
+        "Describe el proyecto, la encuesta o el estudio y en qué debería enfocarse el "
+        "reporte (población objetivo, intervención, territorio, hipótesis, etc.). "
+        "Este contexto es obligatorio y orienta todo el análisis.",
+        key="ai_user_context",
+        height=140,
+    )
+
+    generate = st.button("Generar reporte", type="primary", width="stretch")
+
+    if generate:
+        # Las variables socioeconomicas siempre se incluyen en el reporte,
+        # aunque el usuario las haya quitado de las listas de arriba.
+        socio_set = set(socioeconomic_vars)
+        report_continuous = list(
+            dict.fromkeys(
+                list(selected_continuous) + [v for v in continuous_vars if v in socio_set]
+            )
+        )
+        report_categorical = list(
+            dict.fromkeys(
+                list(selected_categorical) + [v for v in categorical_vars if v in socio_set]
+            )
+        )
+
+        if not api_key.strip():
+            st.error("Ingresa tu API key de Gemini para continuar.")
+        elif not user_context.strip():
+            st.error("El contexto del proyecto es obligatorio. Describe el estudio o la encuesta antes de generar el reporte.")
+        elif dict_file is None:
+            st.error("Sube un diccionario de variables o formulario ODK antes de generar el reporte.")
+        elif not variable_descriptions:
+            st.error(
+                "El diccionario cargado no produjo descripciones válidas. Revisa las columnas "
+                "de nombre y descripción de variables antes de generar el reporte."
+            )
+        elif not socioeconomic_vars:
+            st.error("Selecciona al menos una variable socioeconómica / de caracterización para describir la muestra.")
+        elif not report_continuous and not report_categorical and not (cross_main and cross_disagg):
+            st.error("Selecciona al menos una variable o una tabla cruzada para alimentar el reporte.")
+        else:
+            with st.spinner("Generando reporte con Gemini..."):
+                try:
+                    continuous_table = (
+                        continuous_summary(df, report_continuous)
+                        if report_continuous
+                        else pd.DataFrame()
+                    )
+                    categorical_table = (
+                        categorical_summary(df, report_categorical, max_levels=30)
+                        if report_categorical
+                        else pd.DataFrame()
+                    )
+                    table_type_key = next(
+                        (key for key, value in TABLE_TYPE_LABELS.items() if value == cross_type_label),
+                        "absolute",
+                    )
+                    crosstabs = (
+                        iter_crosstab_tables(df, cross_main, cross_disagg, table_type_key)
+                        if cross_main and cross_disagg
+                        else []
+                    )
+                    data_context = build_data_context(
+                        continuous_table,
+                        categorical_table,
+                        crosstabs,
+                        cross_type_label,
+                    )
+                    prompt = build_prompt(
+                        data_context,
+                        variable_descriptions,
+                        user_context,
+                        dataset_name=st.session_state.file_name or "Base cargada",
+                        n_rows=len(df),
+                        n_vars=df.shape[1],
+                        socioeconomic_vars=socioeconomic_vars,
+                    )
+                    report = generate_report(
+                        api_key.strip(),
+                        AVAILABLE_MODELS[model_label],
+                        prompt,
+                    )
+                    st.session_state["ai_report_text"] = report
+                except Exception as exc:  # noqa: BLE001 - mostrar error al usuario
+                    st.session_state["ai_report_text"] = None
+                    st.error(f"No se pudo generar el reporte: {exc}")
+
+    report_text = st.session_state.get("ai_report_text")
+    if report_text:
+        st.markdown("---")
+        st.markdown(report_text)
+        try:
+            docx_bytes = markdown_to_docx_bytes(report_text)
+            st.download_button(
+                "Descargar en Word (.docx)",
+                docx_bytes,
+                "reporte_preliminar.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                width="stretch",
+            )
+        except Exception as exc:  # noqa: BLE001 - mostrar aviso al usuario
+            st.warning(f"No se pudo preparar el archivo Word: {exc}")
+
+    panel_end()
+
+
 def main() -> None:
     inject_styles()
     init_state()
@@ -2405,7 +2643,7 @@ def main() -> None:
         render_landing_page()
         return
 
-    # Sidebar oscura — solo activa en el dashboard (con dataset cargado)
+    # Sidebar oscura â€” solo activa en el dashboard (con dataset cargado)
     inject_sidebar_dark_css()
 
     with st.sidebar:
@@ -2437,8 +2675,24 @@ def main() -> None:
         "categoricas": categorical_summary(df, selected_categorical, max_levels=30),
     }
 
-    tab_instructions, tab_preview, tab_graphs, tab_cross, tab_cont, tab_cat = st.tabs(
-        ["Instrucciones", "Vista previa", "Gráficos", "Tablas cruzadas", "Continuas", "Categóricas"]
+    (
+        tab_instructions,
+        tab_preview,
+        tab_graphs,
+        tab_cross,
+        tab_cont,
+        tab_cat,
+        tab_ia,
+    ) = st.tabs(
+        [
+            "Instrucciones",
+            "Vista previa",
+            "Gráficos",
+            "Tablas cruzadas",
+            "Continuas",
+            "Categóricas",
+            "Informe IA",
+        ]
     )
 
     with tab_instructions:
@@ -2455,6 +2709,8 @@ def main() -> None:
         tables["continuas"] = continuous_tab(df, selected_continuous)
     with tab_cat:
         tables["categoricas"] = categorical_tab(df, selected_categorical)
+    with tab_ia:
+        informe_ia_tab(df, selected_continuous, selected_categorical)
 
 
 if __name__ == "__main__":
